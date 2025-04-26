@@ -690,7 +690,9 @@ export default function ModelsPage() {
                           <div className="flex items-start">
                             <div>
                               <div className="flex items-center">
-                                <span className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors">{model.name}</span>
+                                <Link href={`/models/${model.id}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
+                                  {model.name}
+                                </Link>
                                 {model.isFree && (
                                   <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium">Free</span>
                                 )}
@@ -739,9 +741,9 @@ export default function ModelsPage() {
                     
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <h3 className="font-medium text-indigo-600 text-base hover:text-indigo-700 transition-colors">
+                        <Link href={`/models/${model.id}`} className="font-medium text-indigo-600 text-base hover:text-indigo-700 transition-colors">
                           {model.name}
-                        </h3>
+                        </Link>
                         <p className="text-xs text-gray-500 font-mono mt-1">{model.modelId}</p>
                       </div>
                       <div className="flex space-x-2">
@@ -787,9 +789,9 @@ export default function ModelsPage() {
                           </span>
                         ))}
                       </div>
-                      <button className="text-xs px-3 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors rounded-md font-medium">
-                        Try model
-                      </button>
+                      <Link href={`/models/${model.id}`} className="text-xs px-3 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors rounded-md font-medium">
+                        View details
+                      </Link>
                     </div>
                   </div>
                 ))}
