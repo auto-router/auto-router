@@ -116,7 +116,7 @@ export default function UnifiedLLMInterface() {
                     The Unified <br /> Interface For LLMs
                 </motion.h1>
                 <p className="text-lg text-gray-500">
-                    Better <span className="text-indigo-500 font-medium">prices</span>, better <span className="text-indigo-500 font-medium">uptime</span>, no subscription.
+                    <span className="text-indigo-500 font-medium">Simplifying AI integration</span> across all major model providers
                 </p>
                 <div ref={promptRef} className="flex items-center gap-2 bg-white border shadow-md rounded-lg px-4 py-3 max-w-md">
                     <motion.span

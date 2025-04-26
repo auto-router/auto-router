@@ -14,7 +14,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "OpenRouter - The Unified Interface For LLMs",
-  description: "Better prices, better uptime, no subscription",
+  description: "Optimize AI costs and performance with intelligent model routing across providers",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
