@@ -86,7 +86,7 @@ export default function ModelsPage() {
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
   const [contextLengthRange, setContextLengthRange] = useState(50); // 0-100 range
   const [priceRange, setPriceRange] = useState(20); // 0-100 range
-  
+
   const resetFilters = () => {
     setFilterText("");
     setSelectedModalities([]);
@@ -97,37 +97,37 @@ export default function ModelsPage() {
     setContextLengthRange(50);
     setPriceRange(20);
   };
-  
+
   const toggleFilter = (type: string, value: string) => {
-    switch(type) {
+    switch (type) {
       case 'modality':
-        setSelectedModalities(prev => 
+        setSelectedModalities(prev =>
           prev.includes(value) ? prev.filter(item => item !== value) : [...prev, value]
         );
         break;
       case 'series':
-        setSelectedSeries(prev => 
+        setSelectedSeries(prev =>
           prev.includes(value) ? prev.filter(item => item !== value) : [...prev, value]
         );
         break;
       case 'category':
-        setSelectedCategories(prev => 
+        setSelectedCategories(prev =>
           prev.includes(value) ? prev.filter(item => item !== value) : [...prev, value]
         );
         break;
       case 'param':
-        setSelectedParameters(prev => 
+        setSelectedParameters(prev =>
           prev.includes(value) ? prev.filter(item => item !== value) : [...prev, value]
         );
         break;
       case 'provider':
-        setSelectedProviders(prev => 
+        setSelectedProviders(prev =>
           prev.includes(value) ? prev.filter(item => item !== value) : [...prev, value]
         );
         break;
     }
   };
-  
+
   // Dummy data to match the screenshots
   const models: Model[] = [
     {
@@ -138,7 +138,7 @@ export default function ModelsPage() {
       inputCost: 0.24,
       outputCost: 0.24,
       context: 32000,
-      isFree: false,
+      isFree: true,
       modelId: "thudm/glm-z1-rumination-32b"
     },
     {
@@ -182,7 +182,7 @@ export default function ModelsPage() {
       inputCost: 1.25,
       outputCost: 10,
       context: 1048576,
-      isFree: false,
+      isFree: true,
       modelId: "google/gemini-2.5-pro-preview-03-25"
     },
     {
@@ -204,7 +204,7 @@ export default function ModelsPage() {
       inputCost: 0.24,
       outputCost: 0.24,
       context: 32000,
-      isFree: false,
+      isFree: true,
       modelId: "thudm/glm-z1-32b"
     }
   ];
@@ -213,64 +213,64 @@ export default function ModelsPage() {
   const enhancedModels = models.map(model => ({
     ...model,
     categories: [
-      model.provider === 'google' ? 'Programming' : 
-      model.provider === 'microsoft' ? 'Marketing' : 'Roleplay'
+      model.provider === 'google' ? 'Programming' :
+        model.provider === 'microsoft' ? 'Marketing' : 'Roleplay'
     ],
     supportedParameters: [
       model.isFree ? 'temperature' : 'tools',
       'top_p'
     ],
-    series: model.name.includes('GLM') ? 'Gemini' : 
-            model.name.includes('MAI') ? 'Claude' : 'GPT'
+    series: model.name.includes('GLM') ? 'Gemini' :
+      model.name.includes('MAI') ? 'Claude' : 'GPT'
   }));
 
   // Filter models based on all filter criteria
   const filteredModels = enhancedModels.filter(model => {
     // Text search filter
-    const textMatch = 
+    const textMatch =
       model.name.toLowerCase().includes(filterText.toLowerCase()) ||
       model.description.toLowerCase().includes(filterText.toLowerCase()) ||
       model.modelId.toLowerCase().includes(filterText.toLowerCase());
-    
+
     // Modality filter - we'll assume all are text models
-    const modalityMatch = 
-      selectedModalities.length === 0 || 
+    const modalityMatch =
+      selectedModalities.length === 0 ||
       selectedModalities.includes('Text');
-    
+
     // Series filter
-    const seriesMatch = 
-      selectedSeries.length === 0 || 
+    const seriesMatch =
+      selectedSeries.length === 0 ||
       selectedSeries.includes(model.series);
-    
+
     // Category filter
-    const categoryMatch = 
-      selectedCategories.length === 0 || 
+    const categoryMatch =
+      selectedCategories.length === 0 ||
       model.categories.some(category => selectedCategories.includes(category));
-    
+
     // Parameter filter
-    const parameterMatch = 
-      selectedParameters.length === 0 || 
+    const parameterMatch =
+      selectedParameters.length === 0 ||
       model.supportedParameters.some(param => selectedParameters.includes(param));
-    
+
     // Provider filter
-    const providerMatch = 
-      selectedProviders.length === 0 || 
+    const providerMatch =
+      selectedProviders.length === 0 ||
       selectedProviders.includes(model.provider);
-    
+
     // Context length filter - based on slider value
-    const contextMatch = 
+    const contextMatch =
       (contextLengthRange < 30 && model.context <= 16000) ||
       (contextLengthRange >= 30 && contextLengthRange < 60 && model.context > 16000 && model.context <= 64000) ||
       (contextLengthRange >= 60 && model.context > 64000);
-    
+
     // Price filter - based on slider value
-    const priceMatch = 
+    const priceMatch =
       (priceRange < 20 && model.isFree) ||
       (priceRange >= 20 && priceRange < 60 && model.inputCost <= 1.0) ||
       (priceRange >= 60);
-    
-    return textMatch && modalityMatch && seriesMatch && categoryMatch && 
-           parameterMatch && providerMatch && contextMatch && priceMatch;
+
+    return textMatch && modalityMatch && seriesMatch && categoryMatch &&
+      parameterMatch && providerMatch && contextMatch && priceMatch;
   });
 
   // Categories like in the left sidebar in the screenshots
@@ -278,14 +278,14 @@ export default function ModelsPage() {
   const parameters = ["tools", "temperature", "top_p", "More..."];
   const providers = ["AI21", "AlonLabs", "Alibaba", "More..."];
   const modalityOptions = ["Text", "Image", "File"];
-  
+
   // For context length slider in UI
   const contextLengths = [
     { value: "4K", position: "0%" },
     { value: "64K", position: "40%" },
     { value: "1M", position: "100%" }
   ];
-  
+
   // For pricing slider in UI
   const pricingOptions = [
     { value: "FREE", position: "0%" },
@@ -322,7 +322,7 @@ export default function ModelsPage() {
                 ))}
               </div>
             </div>
-            
+
             {/* Context length slider */}
             <div className="mb-8">
               <h3 className="text-sm font-medium text-gray-700 mb-3">Context Length</h3>
@@ -341,15 +341,15 @@ export default function ModelsPage() {
                   <span>1M+</span>
                 </div>
                 <div className="mt-3 text-xs px-2 py-1 bg-indigo-50 rounded text-indigo-700 text-center">
-                  {contextLengthRange < 30 
-                    ? "4K-16K tokens" 
-                    : contextLengthRange < 60 
-                    ? "32K-64K tokens" 
-                    : "100K+ tokens"}
+                  {contextLengthRange < 30
+                    ? "4K-16K tokens"
+                    : contextLengthRange < 60
+                      ? "32K-64K tokens"
+                      : "100K+ tokens"}
                 </div>
               </div>
             </div>
-            
+
             {/* Price range slider */}
             <div className="mb-8">
               <h3 className="text-sm font-medium text-gray-700 mb-3">Price Range</h3>
@@ -368,15 +368,15 @@ export default function ModelsPage() {
                   <span>$10+</span>
                 </div>
                 <div className="mt-3 text-xs px-2 py-1 bg-green-50 rounded text-green-700 text-center">
-                  {priceRange < 20 
-                    ? "Free models only" 
-                    : priceRange < 60 
-                    ? "Under $1 per 1M tokens" 
-                    : "Premium models"}
+                  {priceRange < 20
+                    ? "Free models only"
+                    : priceRange < 60
+                      ? "Under $1 per 1M tokens"
+                      : "Premium models"}
                 </div>
               </div>
             </div>
-            
+
             {/* Series */}
             <div className="mb-8">
               <h3 className="text-sm font-medium text-gray-700 mb-3">Model Series</h3>
@@ -419,7 +419,7 @@ export default function ModelsPage() {
                 </div>
               </div>
             </div>
-            
+
             {/* Categories with cleaner design */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-3">
@@ -445,7 +445,7 @@ export default function ModelsPage() {
                 ))}
               </div>
             </div>
-            
+
             {/* Parameters */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-3">
@@ -471,7 +471,7 @@ export default function ModelsPage() {
                 ))}
               </div>
             </div>
-            
+
             {/* Providers */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-3">
@@ -497,9 +497,9 @@ export default function ModelsPage() {
                 ))}
               </div>
             </div>
-            
+
             {/* Clear All Filters button */}
-            <button 
+            <button
               onClick={resetFilters}
               className="w-full py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
@@ -513,12 +513,12 @@ export default function ModelsPage() {
               <h1 className="text-2xl font-semibold">Models</h1>
               <div className="flex justify-between items-center mt-4">
                 <div className="text-sm text-gray-500">
-                  {filteredModels.length === models.length 
-                    ? `${models.length} models` 
+                  {filteredModels.length === models.length
+                    ? `${models.length} models`
                     : `${filteredModels.length} of ${models.length} models`}
                 </div>
                 <div className="flex space-x-2">
-                  <button 
+                  <button
                     onClick={() => setViewMode("table")}
                     className={`p-1.5 rounded ${viewMode === "table" ? "bg-gray-100" : ""}`}
                   >
@@ -526,7 +526,7 @@ export default function ModelsPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                     </svg>
                   </button>
-                  <button 
+                  <button
                     onClick={() => setViewMode("grid")}
                     className={`p-1.5 rounded ${viewMode === "grid" ? "bg-gray-100" : ""}`}
                   >
@@ -539,9 +539,9 @@ export default function ModelsPage() {
 
               <div className="mt-4">
                 <div className="relative">
-                  <input 
-                    type="text" 
-                    placeholder="Filter models" 
+                  <input
+                    type="text"
+                    placeholder="Filter models"
                     className="w-full bg-gray-50 border border-gray-200 rounded-md py-2 px-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all duration-200"
                     value={filterText}
                     onChange={(e) => setFilterText(e.target.value)}
@@ -552,112 +552,112 @@ export default function ModelsPage() {
                     </svg>
                   </div>
                 </div>
-                
+
                 {/* Active Filters */}
-                {(selectedModalities.length > 0 || 
-                  selectedSeries.length > 0 || 
-                  selectedCategories.length > 0 || 
-                  selectedParameters.length > 0 || 
+                {(selectedModalities.length > 0 ||
+                  selectedSeries.length > 0 ||
+                  selectedCategories.length > 0 ||
+                  selectedParameters.length > 0 ||
                   selectedProviders.length > 0) && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="text-xs text-gray-500 mr-1 pt-1">Active filters:</span>
-                    
-                    {selectedModalities.map(modality => (
-                      <span 
-                        key={modality} 
-                        className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700"
-                      >
-                        {modality}
-                        <button 
-                          type="button" 
-                          className="ml-1 inline-flex items-center rounded-full text-indigo-400 hover:bg-indigo-200 hover:text-indigo-600"
-                          onClick={() => toggleFilter('modality', modality)}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span className="text-xs text-gray-500 mr-1 pt-1">Active filters:</span>
+
+                      {selectedModalities.map(modality => (
+                        <span
+                          key={modality}
+                          className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700"
                         >
-                          <span className="sr-only">Remove filter for {modality}</span>
-                          <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                          </svg>
-                        </button>
-                      </span>
-                    ))}
-                    
-                    {selectedSeries.map(series => (
-                      <span 
-                        key={series} 
-                        className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700"
-                      >
-                        {series}
-                        <button 
-                          type="button" 
-                          className="ml-1 inline-flex items-center rounded-full text-blue-400 hover:bg-blue-200 hover:text-blue-600"
-                          onClick={() => toggleFilter('series', series)}
+                          {modality}
+                          <button
+                            type="button"
+                            className="ml-1 inline-flex items-center rounded-full text-indigo-400 hover:bg-indigo-200 hover:text-indigo-600"
+                            onClick={() => toggleFilter('modality', modality)}
+                          >
+                            <span className="sr-only">Remove filter for {modality}</span>
+                            <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+
+                      {selectedSeries.map(series => (
+                        <span
+                          key={series}
+                          className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700"
                         >
-                          <span className="sr-only">Remove filter for {series}</span>
-                          <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                          </svg>
-                        </button>
-                      </span>
-                    ))}
-                    
-                    {selectedCategories.map(category => (
-                      <span 
-                        key={category} 
-                        className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700"
-                      >
-                        {category}
-                        <button 
-                          type="button" 
-                          className="ml-1 inline-flex items-center rounded-full text-green-400 hover:bg-green-200 hover:text-green-600"
-                          onClick={() => toggleFilter('category', category)}
+                          {series}
+                          <button
+                            type="button"
+                            className="ml-1 inline-flex items-center rounded-full text-blue-400 hover:bg-blue-200 hover:text-blue-600"
+                            onClick={() => toggleFilter('series', series)}
+                          >
+                            <span className="sr-only">Remove filter for {series}</span>
+                            <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+
+                      {selectedCategories.map(category => (
+                        <span
+                          key={category}
+                          className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700"
                         >
-                          <span className="sr-only">Remove filter for {category}</span>
-                          <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                          </svg>
-                        </button>
-                      </span>
-                    ))}
-                    
-                    {selectedParameters.map(param => (
-                      <span 
-                        key={param} 
-                        className="inline-flex items-center rounded-full bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700"
-                      >
-                        {param}
-                        <button 
-                          type="button" 
-                          className="ml-1 inline-flex items-center rounded-full text-purple-400 hover:bg-purple-200 hover:text-purple-600"
-                          onClick={() => toggleFilter('param', param)}
+                          {category}
+                          <button
+                            type="button"
+                            className="ml-1 inline-flex items-center rounded-full text-green-400 hover:bg-green-200 hover:text-green-600"
+                            onClick={() => toggleFilter('category', category)}
+                          >
+                            <span className="sr-only">Remove filter for {category}</span>
+                            <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+
+                      {selectedParameters.map(param => (
+                        <span
+                          key={param}
+                          className="inline-flex items-center rounded-full bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700"
                         >
-                          <span className="sr-only">Remove filter for {param}</span>
-                          <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                          </svg>
-                        </button>
-                      </span>
-                    ))}
-                    
-                    {selectedProviders.map(provider => (
-                      <span 
-                        key={provider} 
-                        className="inline-flex items-center rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700"
-                      >
-                        {provider}
-                        <button 
-                          type="button" 
-                          className="ml-1 inline-flex items-center rounded-full text-amber-400 hover:bg-amber-200 hover:text-amber-600"
-                          onClick={() => toggleFilter('provider', provider)}
+                          {param}
+                          <button
+                            type="button"
+                            className="ml-1 inline-flex items-center rounded-full text-purple-400 hover:bg-purple-200 hover:text-purple-600"
+                            onClick={() => toggleFilter('param', param)}
+                          >
+                            <span className="sr-only">Remove filter for {param}</span>
+                            <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+
+                      {selectedProviders.map(provider => (
+                        <span
+                          key={provider}
+                          className="inline-flex items-center rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700"
                         >
-                          <span className="sr-only">Remove filter for {provider}</span>
-                          <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                          </svg>
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
+                          {provider}
+                          <button
+                            type="button"
+                            className="ml-1 inline-flex items-center rounded-full text-amber-400 hover:bg-amber-200 hover:text-amber-600"
+                            onClick={() => toggleFilter('provider', provider)}
+                          >
+                            <span className="sr-only">Remove filter for {provider}</span>
+                            <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
               </div>
             </div>
 
@@ -711,12 +711,11 @@ export default function ModelsPage() {
                           {model.context.toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <span 
-                            className={`text-xs px-2 py-1 rounded-full font-medium ${
-                              model.series === 'Gemini' ? 'bg-indigo-50 text-indigo-700' : 
-                              model.series === 'Claude' ? 'bg-blue-50 text-blue-700' : 
-                              'bg-pink-50 text-pink-700'
-                            }`}
+                          <span
+                            className={`text-xs px-2 py-1 rounded-full font-medium ${model.series === 'Gemini' ? 'bg-indigo-50 text-indigo-700' :
+                              model.series === 'Claude' ? 'bg-blue-50 text-blue-700' :
+                                'bg-pink-50 text-pink-700'
+                              }`}
                           >
                             {model.series}
                           </span>
@@ -731,14 +730,13 @@ export default function ModelsPage() {
                 {filteredModels.map((model) => (
                   <div key={model.id} className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow duration-300 bg-white relative overflow-hidden">
                     {/* Top colored accent bar based on model series */}
-                    <div 
-                      className={`absolute top-0 left-0 right-0 h-1 ${
-                        model.series === 'Gemini' ? 'bg-indigo-500' : 
-                        model.series === 'Claude' ? 'bg-blue-500' : 
-                        'bg-pink-500'
-                      }`}
+                    <div
+                      className={`absolute top-0 left-0 right-0 h-1 ${model.series === 'Gemini' ? 'bg-indigo-500' :
+                        model.series === 'Claude' ? 'bg-blue-500' :
+                          'bg-pink-500'
+                        }`}
                     ></div>
-                    
+
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <Link href={`/models/${model.id}`} className="font-medium text-indigo-600 text-base hover:text-indigo-700 transition-colors">
@@ -750,22 +748,21 @@ export default function ModelsPage() {
                         {model.isFree && (
                           <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">Free</span>
                         )}
-                        <span 
-                          className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            model.series === 'Gemini' ? 'bg-indigo-50 text-indigo-700' : 
-                            model.series === 'Claude' ? 'bg-blue-50 text-blue-700' : 
-                            'bg-pink-50 text-pink-700'
-                          }`}
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full font-medium ${model.series === 'Gemini' ? 'bg-indigo-50 text-indigo-700' :
+                            model.series === 'Claude' ? 'bg-blue-50 text-blue-700' :
+                              'bg-pink-50 text-pink-700'
+                            }`}
                         >
                           {model.series}
                         </span>
                       </div>
                     </div>
-                    
+
                     <p className="mt-3 text-sm text-gray-600 line-clamp-2 overflow-hidden text-ellipsis min-h-[40px]">
                       {model.description}
                     </p>
-                    
+
                     <div className="mt-4 pt-3 border-t border-gray-100 grid grid-cols-3 gap-4 text-xs">
                       <div className="flex flex-col">
                         <div className="text-gray-500 mb-1">Input</div>
@@ -780,7 +777,7 @@ export default function ModelsPage() {
                         <div className="font-medium">{(model.context / 1000)}K</div>
                       </div>
                     </div>
-                    
+
                     <div className="mt-4 flex justify-between items-center">
                       <div className="flex flex-wrap gap-1">
                         {model.categories.map(category => (
