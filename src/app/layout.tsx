@@ -4,6 +4,7 @@ import "./globals.css";
 import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
 import { AutoSwitchProvider } from "../context/AutoSwitchContext";
+import { AuthProvider } from "../context/AuthContext";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -21,13 +22,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="light">
       <body className={`bg-white min-h-screen flex flex-col ${inter.variable} font-sans`}>
-        <AutoSwitchProvider>
-          <NavBar />
-          <main className="flex-1 flex flex-col bg-white">
-            {children}
-          </main>
-          <Footer />
-        </AutoSwitchProvider>
+        <AuthProvider>
+          <AutoSwitchProvider>
+            <NavBar />
+            <main className="flex-1 flex flex-col bg-white">
+              {children}
+            </main>
+            <Footer />
+          </AutoSwitchProvider>
+        </AuthProvider>
       </body>
     </html>
   );
