@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
 
 interface UserProfile {
   username: string;
@@ -16,6 +17,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const router = useRouter();
+  const { setAuthenticated, refreshAuthState } = useAuth();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -39,6 +41,8 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     try {
       await authService.logout();
+      setAuthenticated(false);
+      refreshAuthState(); // Ensure persisted state is updated
       router.push('/login');
     } catch (err) {
       setError("Failed to logout");
@@ -124,4 +128,4 @@ export default function ProfilePage() {
       </div>
     </div>
   );
-} 
+}

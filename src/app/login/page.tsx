@@ -12,18 +12,19 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-  const { setAuthenticated } = useAuth();
+  const { setAuthenticated, refreshAuthState } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-    
+
     console.log('Login form submitted with:', { email });
-    
+
     try {
       await authService.login({ email, password });
       setAuthenticated(true);
+      refreshAuthState(); // Ensure persisted state is updated
       router.push("/");
     } catch (err) {
       console.error('Login error details:', {
@@ -31,7 +32,7 @@ export default function LoginPage() {
         message: err instanceof Error ? err.message : 'Unknown error',
         stack: err instanceof Error ? err.stack : undefined
       });
-      
+
       if (err instanceof AuthError) {
         setError(err.message);
       } else {
@@ -190,4 +191,4 @@ export default function LoginPage() {
       </div>
     </div>
   );
-} 
+}

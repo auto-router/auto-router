@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authService } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
 
 export default function SignupPage() {
   const [username, setUsername] = useState("");
@@ -15,6 +16,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const { setAuthenticated, refreshAuthState } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,10 +24,10 @@ export default function SignupPage() {
       setError("Passwords do not match");
       return;
     }
-    
+
     setLoading(true);
     setError("");
-    
+
     try {
       await authService.register({
         username,
@@ -34,6 +36,8 @@ export default function SignupPage() {
         email,
         password,
       });
+      setAuthenticated(true);
+      refreshAuthState(); // Ensure persisted state is updated
       router.push("/");
     } catch (err) {
       setError("Failed to create account");
@@ -237,4 +241,4 @@ export default function SignupPage() {
       </div>
     </div>
   );
-} 
+}
