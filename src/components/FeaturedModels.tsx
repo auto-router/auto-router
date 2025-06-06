@@ -3,12 +3,11 @@
 import React from "react";
 
 const FeaturedModels = () => {
-    // Updated models data with additional models to showcase grid layout
     const models = [
         {
             id: "gemini-2.5-pro",
             name: "Gemini 2.5 Pro Preview",
-            provider: "google",
+            provider: "Google",
             tokens: "83.1B",
             latency: "13.9s",
             growth: "+7.42%",
@@ -18,7 +17,7 @@ const FeaturedModels = () => {
         {
             id: "gpt-4.1",
             name: "GPT-4.1",
-            provider: "openai",
+            provider: "OpenAI",
             tokens: "39.9B",
             latency: "584ms",
             growth: "+13.06%",
@@ -28,7 +27,7 @@ const FeaturedModels = () => {
         {
             id: "claude-3.7-sonnet",
             name: "Claude 3.7 Sonnet",
-            provider: "anthropic",
+            provider: "Anthropic",
             tokens: "324.5B",
             latency: "1.5s",
             growth: "-3.37%",
@@ -38,7 +37,7 @@ const FeaturedModels = () => {
         {
             id: "mistral-large",
             name: "Mistral Large",
-            provider: "mistral",
+            provider: "Mistral",
             tokens: "98.6B",
             latency: "780ms",
             growth: "+15.22%",
@@ -48,7 +47,7 @@ const FeaturedModels = () => {
         {
             id: "llama-3",
             name: "Llama 3 70B",
-            provider: "meta",
+            provider: "Meta",
             tokens: "157.4B",
             latency: "1.2s",
             growth: "+10.54%",
@@ -58,7 +57,7 @@ const FeaturedModels = () => {
         {
             id: "cohere-command",
             name: "Cohere Command R+",
-            provider: "cohere",
+            provider: "Cohere",
             tokens: "76.1B",
             latency: "650ms",
             growth: "+8.92%",
@@ -67,91 +66,55 @@ const FeaturedModels = () => {
         }
     ];
 
+    const providerColors: Record<string, string> = {
+        Google: "bg-blue-100 text-blue-600",
+        OpenAI: "bg-green-100 text-green-600",
+        Anthropic: "bg-yellow-100 text-yellow-700",
+        Mistral: "bg-purple-100 text-purple-600",
+        Meta: "bg-indigo-100 text-indigo-600",
+        Cohere: "bg-teal-100 text-teal-600",
+    };
+
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {models.map((model, index) => (
-                <div key={model.id} className="relative isolate">
-                    <div className="p-4 rounded-lg border border-gray-200 bg-white transition-all duration-300 hover:shadow-lg hover:border-indigo-200 hover:scale-102 group">
-                        {/* Tag positioned with higher z-index */}
-                        {model.tag && (
-                            <div style={{zIndex: 50}} className="absolute -top-3 right-3 bg-indigo-100 text-indigo-800 text-xs py-1 px-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                {model.tag}
-                            </div>
-                        )}
-                        
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-3">
-                                <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                                    model.provider === 'google' ? 'bg-blue-50 group-hover:bg-blue-100' : 
-                                    model.provider === 'openai' ? 'bg-green-50 group-hover:bg-green-100' : 
-                                    model.provider === 'anthropic' ? 'bg-amber-50 group-hover:bg-amber-100' :
-                                    model.provider === 'mistral' ? 'bg-purple-50 group-hover:bg-purple-100' :
-                                    model.provider === 'meta' ? 'bg-indigo-50 group-hover:bg-indigo-100' :
-                                    'bg-teal-50 group-hover:bg-teal-100'
-                                } transition-colors duration-300`}>
-                                    <span className={`text-sm font-medium ${
-                                        model.provider === 'google' ? 'text-blue-500' : 
-                                        model.provider === 'openai' ? 'text-green-500' : 
-                                        model.provider === 'anthropic' ? 'text-amber-700' :
-                                        model.provider === 'mistral' ? 'text-purple-500' :
-                                        model.provider === 'meta' ? 'text-indigo-500' :
-                                        'text-teal-500'
-                                    }`}>
-                                        {model.provider === 'google' ? 'G' : 
-                                         model.provider === 'openai' ? 'O' : 
-                                         model.provider === 'anthropic' ? 'A' :
-                                         model.provider === 'mistral' ? 'M' :
-                                         model.provider === 'meta' ? 'L' :
-                                         'C'}
-                                    </span>
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-medium text-gray-800 group-hover:text-black transition-colors duration-300">{model.name}</span>
-                                        {model.isNew && (
-                                            <span className="text-xs px-1.5 py-0.5 bg-gray-100 rounded text-gray-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors duration-300">New</span>
-                                        )}
-                                    </div>
-                                    <div className="text-xs text-gray-500">by {model.provider}</div>
-                                </div>
-                            </div>
-                            
-                            {index === 0 && (
-                                <svg className="w-5 h-5 text-blue-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                            )}
-                            
-                            {index === 1 && (
-                                <svg className="w-5 h-5 text-gray-700" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-                                    <path d="M12 8V16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                    <path d="M8 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                </svg>
-                            )}
-                            
-                            {index === 2 && (
-                                <div className="h-5 w-5 rounded-full bg-amber-100 flex items-center justify-center">
-                                    <span className="text-amber-700 text-xs">A</span>
-                                </div>
-                            )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {models.map((model) => (
+                <div
+                    key={model.id}
+                    className="flex flex-col items-center justify-between bg-gradient-to-br from-[#232323] to-[#181818] border border-[#232323] rounded-2xl shadow-md w-60 h-56 min-h-[14rem] max-h-[14rem] transition hover:scale-105 hover:border-green-400 duration-200 p-5 relative overflow-hidden"
+                >
+                    {/* Tag */}
+                    {model.tag && (
+                        <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-green-100 text-green-700 text-xs py-1 px-3 rounded-full font-medium shadow-sm whitespace-nowrap z-10">
+                            {model.tag}
                         </div>
-                        
-                        <div className="grid grid-cols-3 gap-2 mt-4">
-                            <div className="group-hover:transform group-hover:translate-y-[-2px] transition-transform duration-300">
-                                <div className="font-medium text-gray-800 group-hover:text-black transition-colors duration-300">{model.tokens}</div>
-                                <div className="text-xs text-gray-500">Tokens/wk</div>
-                            </div>
-                            <div className="group-hover:transform group-hover:translate-y-[-2px] transition-transform duration-300">
-                                <div className="font-medium text-gray-800 group-hover:text-black transition-colors duration-300">{model.latency}</div>
-                                <div className="text-xs text-gray-500">Latency</div>
-                            </div>
-                            <div className="group-hover:transform group-hover:translate-y-[-2px] transition-transform duration-300">
-                                <div className={`font-medium ${model.growth.startsWith("+") ? "text-green-500 group-hover:text-green-600" : "text-red-500 group-hover:text-red-600"} transition-colors duration-300`}>
-                                    {model.growth}
-                                </div>
-                                <div className="text-xs text-gray-500">Weekly growth</div>
-                            </div>
+                    )}
+                    {/* Logo/Initial */}
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mt-8 mb-2 shadow ${providerColors[model.provider] || "bg-gray-100 text-gray-700"}`}>
+                        <span className="text-lg font-bold">
+                            {model.provider[0]}
+                        </span>
+                    </div>
+                    {/* Name + New */}
+                    <div className="flex items-center gap-2 mb-1 w-full justify-center">
+                        <span className="text-base font-semibold text-white text-center truncate max-w-[8.5rem]">{model.name}</span>
+                        {model.isNew && (
+                            <span className="text-xs px-2 py-0.5 bg-green-500 text-white rounded-full font-semibold whitespace-nowrap">New</span>
+                        )}
+                    </div>
+                    <div className="text-xs text-gray-400 text-center mb-2 truncate w-full">{model.provider}</div>
+                    {/* Stats */}
+                    <div className="flex justify-center gap-4 w-full mt-2">
+                        <div className="flex flex-col items-center min-w-0">
+                            <span className="text-sm font-medium text-gray-200 truncate">{model.tokens}</span>
+                            <span className="text-[10px] text-gray-500">Tokens/wk</span>
+                        </div>
+                        <div className="flex flex-col items-center min-w-0">
+                            <span className="text-sm font-medium text-gray-200 truncate">{model.latency}</span>
+                            <span className="text-[10px] text-gray-500">Latency</span>
+                        </div>
+                        <div className="flex flex-col items-center min-w-0">
+                            <span className={`text-sm font-medium truncate ${model.growth.startsWith("+") ? "text-green-400" : "text-red-400"}`}>{model.growth}</span>
+                            <span className="text-[10px] text-gray-500">Growth</span>
                         </div>
                     </div>
                 </div>

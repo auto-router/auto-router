@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
@@ -21,6 +21,31 @@ interface EnhancedModel extends Model {
   supportedParameters: string[];
   series: string;
 }
+
+// Add this type for your API model data:
+type ApiModel = {
+  slug: string;
+  name: string;
+  description?: string;
+  author?: string;
+  context_length?: number;
+  input_modalities?: string[];
+  output_modalities?: string[];
+  group?: string;
+  permaslug?: string;
+  categories?: string[];
+  endpoint?: {
+    provider_name?: string;
+    pricing?: {
+      prompt?: string;
+      completion?: string;
+    };
+    context_length?: number;
+    is_free?: boolean;
+    supported_parameters?: string[];
+  };
+  // ...other fields as needed
+};
 
 const SliderStyles = () => (
   <style jsx global>{`
@@ -86,18 +111,99 @@ export default function ModelsPage() {
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
   const [contextLengthRange, setContextLengthRange] = useState(50); // 0-100 range
   const [priceRange, setPriceRange] = useState(20); // 0-100 range
+  const [apiModels, setApiModels] = useState<Model[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const resetFilters = () => {
-    setFilterText("");
-    setSelectedModalities([]);
-    setSelectedSeries([]);
-    setSelectedCategories([]);
-    setSelectedParameters([]);
-    setSelectedProviders([]);
-    setContextLengthRange(50);
-    setPriceRange(20);
-  };
+  useEffect(() => {
+    async function fetchModels() {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/models");
+        const json = await res.json();
+        const mapped = (json.data || []).map((item: ApiModel, idx: number) => ({
+          id: item.slug + "-" + (item.permaslug || "") + "-" + idx,
+          name: item.name,
+          description: item.description || "",
+          provider: item.endpoint?.provider_name || item.author || "",
+          inputCost: item.endpoint?.pricing?.prompt
+            ? Number(item.endpoint.pricing.prompt) * 1_000_000
+            : null,
+          outputCost: item.endpoint?.pricing?.completion
+            ? Number(item.endpoint.pricing.completion) * 1_000_000
+            : null,
+          context: item.context_length || item.endpoint?.context_length || 0,
+          isFree: item.endpoint?.is_free || false,
+          modelId: item.permaslug || item.slug || "",
+          // Add these for filtering:
+          inputModalities: item.input_modalities || [],
+          supportedParameters: item.endpoint?.supported_parameters || [],
+          series: item.group || "Other",
+          categories: item.categories || [], // If categories exist, else []
+        }));
+        setApiModels(mapped);
+      } catch (e) {
+        setApiModels([]);
+      }
+      setLoading(false);
+    }
+    fetchModels();
+  }, []);
 
+  // Use apiModels instead of models
+  const models: any[] = apiModels;
+
+  // Dynamically generate filter options from loaded models
+  const allProviders = Array.from(new Set(models.map(m => m.provider).filter(Boolean))).sort();
+  const allModalities = Array.from(
+    new Set(
+      models.flatMap(m => m.inputModalities || []).map((m: string) => m.charAt(0).toUpperCase() + m.slice(1))
+    )
+  );
+  const allSeries = Array.from(new Set(models.map(m => m.series).filter(Boolean))).sort();
+  const allCategories = Array.from(
+    new Set(models.flatMap(m => m.categories || []))
+  );
+  const allParameters = Array.from(
+    new Set(models.flatMap(m => m.supportedParameters || []))
+  );
+
+  const modalityOptions = allModalities.length > 0 ? allModalities : ["Text", "Image", "File"];
+  const providers = allProviders.length > 0 ? allProviders : ["AI21", "AlonLabs", "Alibaba", "More..."];
+  const seriesOptions = allSeries.length > 0 ? allSeries : ["GPT", "Claude", "Gemini"];
+  const categories = allCategories.length > 0 ? allCategories : ["Roleplay", "Programming", "Marketing", "More..."];
+  const parameters = allParameters.length > 0 ? allParameters : ["tools", "temperature", "top_p", "More..."];
+
+  // For context length slider in UI
+  const contextLengths = [
+    { value: "4K", position: "0%" },
+    { value: "64K", position: "40%" },
+    { value: "1M", position: "100%" }
+  ];
+
+  // For pricing slider in UI
+  const pricingOptions = [
+    { value: "FREE", position: "0%" },
+    { value: "$0.5", position: "50%" },
+    { value: "$10+", position: "100%" }
+  ];
+
+  // Loading state
+  if (loading) {
+    return (
+      <main className="flex min-h-screen flex-col bg-black">
+        <SliderStyles />
+        <div className="flex-1 flex items-center justify-center text-white text-lg">Loading models...</div>
+      </main>
+    );
+  }
+
+  // Helper for currency formatting
+  const formatCurrency = (amount: number | null) =>
+    amount === null
+      ? <span className="text-gray-400">N/A</span>
+      : <span>${amount.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</span>;
+
+  // Place toggleFilter INSIDE the ModelsPage component, before the return statement:
   const toggleFilter = (type: string, value: string) => {
     switch (type) {
       case 'modality':
@@ -128,103 +234,26 @@ export default function ModelsPage() {
     }
   };
 
-  // Dummy data to match the screenshots
-  const models: Model[] = [
-    {
-      id: "thudm-glm-z1-rumination-32b",
-      name: "THUDM: GLM Z1 Rumination 32B",
-      description: "A 32B-parameter deep reasoning model from the GLM-4-Z1 series, optimized for complex, open-ended tasks requiring prolonged deliberation.",
-      provider: "thudm",
-      inputCost: 0.24,
-      outputCost: 0.24,
-      context: 32000,
-      isFree: true,
-      modelId: "thudm/glm-z1-rumination-32b"
-    },
-    {
-      id: "thudm-glm-z1-9b-free",
-      name: "THUDM: GLM Z1 9B (free)",
-      description: "GLM-Z1-9B-0414 is a 9B-parameter language model developed by THUDM as part of the GLM-4 family.",
-      provider: "thudm",
-      inputCost: 0,
-      outputCost: 0,
-      context: 32000,
-      isFree: true,
-      modelId: "thudm/glm-z1-9b:free"
-    },
-    {
-      id: "thudm-glm-4-9b-free",
-      name: "THUDM: GLM 4 9B (free)",
-      description: "GLM-4-9B-0414 is a 9 billion parameter language model from the GLM-4 series developed by THUDM.",
-      provider: "thudm",
-      inputCost: 0,
-      outputCost: 0,
-      context: 32000,
-      isFree: true,
-      modelId: "thudm/glm-4-9b:free"
-    },
-    {
-      id: "microsoft-mai-ds-r1-free",
-      name: "Microsoft: MAI DS R1 (free)",
-      description: "Microsoft's foundational AI model designed for document processing and summarization tasks.",
-      provider: "microsoft",
-      inputCost: 0,
-      outputCost: 0,
-      context: 163840,
-      isFree: true,
-      modelId: "microsoft/mai-ds-r1:free"
-    },
-    {
-      id: "google-gemini-2-5-pro-preview",
-      name: "Google: Gemini 2.5 Pro Preview",
-      description: "Google's latest Gemini model with significantly improved reasoning and multimodal capabilities.",
-      provider: "google",
-      inputCost: 1.25,
-      outputCost: 10,
-      context: 1048576,
-      isFree: true,
-      modelId: "google/gemini-2.5-pro-preview-03-25"
-    },
-    {
-      id: "thudm-glm-z1-32b-free",
-      name: "THUDM: GLM Z1 32B (free)",
-      description: "The free tier version of THUDM's 32B parameter language model from the GLM-Z1 series.",
-      provider: "thudm",
-      inputCost: 0,
-      outputCost: 0,
-      context: 32768,
-      isFree: true,
-      modelId: "thudm/glm-z1-32b:free"
-    },
-    {
-      id: "thudm-glm-z1-32b",
-      name: "THUDM: GLM Z1 32B",
-      description: "THUDM's 32B parameter language model from the GLM-Z1 series with full capabilities.",
-      provider: "thudm",
-      inputCost: 0.24,
-      outputCost: 0.24,
-      context: 32000,
-      isFree: true,
-      modelId: "thudm/glm-z1-32b"
-    }
-  ];
+  // Reset filters function
+  const resetFilters = () => {
+    setFilterText("");
+    setSelectedModalities([]);
+    setSelectedSeries([]);
+    setSelectedCategories([]);
+    setSelectedParameters([]);
+    setSelectedProviders([]);
+    setContextLengthRange(50);
+    setPriceRange(20);
+  };
 
-  // Assign each model to categories and support for parameters
+  // Filtering logic (add this before the return statement)
   const enhancedModels = models.map(model => ({
     ...model,
-    categories: [
-      model.provider === 'google' ? 'Programming' :
-        model.provider === 'microsoft' ? 'Marketing' : 'Roleplay'
-    ],
-    supportedParameters: [
-      model.isFree ? 'temperature' : 'tools',
-      'top_p'
-    ],
-    series: model.name.includes('GLM') ? 'Gemini' :
-      model.name.includes('MAI') ? 'Claude' : 'GPT'
+    categories: model.categories && model.categories.length > 0 ? model.categories : ["General"],
+    supportedParameters: model.supportedParameters || [],
+    series: model.series || "Other"
   }));
 
-  // Filter models based on all filter criteria
   const filteredModels = enhancedModels.filter(model => {
     // Text search filter
     const textMatch =
@@ -232,10 +261,12 @@ export default function ModelsPage() {
       model.description.toLowerCase().includes(filterText.toLowerCase()) ||
       model.modelId.toLowerCase().includes(filterText.toLowerCase());
 
-    // Modality filter - we'll assume all are text models
+    // Modality filter
     const modalityMatch =
       selectedModalities.length === 0 ||
-      selectedModalities.includes('Text');
+      (model.inputModalities || []).some((mod: string) =>
+        selectedModalities.includes(mod.charAt(0).toUpperCase() + mod.slice(1))
+      );
 
     // Series filter
     const seriesMatch =
@@ -245,12 +276,12 @@ export default function ModelsPage() {
     // Category filter
     const categoryMatch =
       selectedCategories.length === 0 ||
-      model.categories.some(category => selectedCategories.includes(category));
+      (model.categories || []).some((category: string) => selectedCategories.includes(category));
 
     // Parameter filter
     const parameterMatch =
       selectedParameters.length === 0 ||
-      model.supportedParameters.some(param => selectedParameters.includes(param));
+      (model.supportedParameters || []).some((param: string) => selectedParameters.includes(param));
 
     // Provider filter
     const providerMatch =
@@ -266,252 +297,208 @@ export default function ModelsPage() {
     // Price filter - based on slider value
     const priceMatch =
       (priceRange < 20 && model.isFree) ||
-      (priceRange >= 20 && priceRange < 60 && model.inputCost <= 1.0) ||
+      (priceRange >= 20 && priceRange < 60 && model.inputCost !== null && model.inputCost <= 1.0) ||
       (priceRange >= 60);
 
     return textMatch && modalityMatch && seriesMatch && categoryMatch &&
       parameterMatch && providerMatch && contextMatch && priceMatch;
   });
 
-  // Categories like in the left sidebar in the screenshots
-  const categories = ["Roleplay", "Programming", "Marketing", "More..."];
-  const parameters = ["tools", "temperature", "top_p", "More..."];
-  const providers = ["AI21", "AlonLabs", "Alibaba", "More..."];
-  const modalityOptions = ["Text", "Image", "File"];
-
-  // For context length slider in UI
-  const contextLengths = [
-    { value: "4K", position: "0%" },
-    { value: "64K", position: "40%" },
-    { value: "1M", position: "100%" }
-  ];
-
-  // For pricing slider in UI
-  const pricingOptions = [
-    { value: "FREE", position: "0%" },
-    { value: "$0.5", position: "50%" },
-    { value: "$10+", position: "100%" }
-  ];
-
   return (
     <main className="flex min-h-screen flex-col bg-black">
       <SliderStyles />
-      <div className="max-w-7xl mx-auto px-4 py-6 w-full">
+      <div className="max-w-7xl mx-auto px-0 py-6 w-full">
         <div className="flex">
           {/* Left Sidebar */}
-          <div className="w-64 pr-6 border-r border-gray-800 relative bg-[#181818]">
-            {/* Add a subtle shadow for separation */}
-            <div className="absolute top-0 right-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-gray-200 to-transparent"></div>
-            {/* Input Modalities */}
-            <div className="mb-8">
-              <h3 className="text-sm font-medium text-gray-300 mb-3">Input Modalities</h3>
-              <div className="space-y-1">
-                {modalityOptions.map((option) => (
-                  <div key={option} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={`modality-${option}`}
-                      className="h-4 w-4 rounded border-gray-700 text-green-500 focus:ring-green-500"
-                      checked={selectedModalities.includes(option)}
-                      onChange={() => toggleFilter('modality', option)}
-                    />
-                    <label htmlFor={`modality-${option}`} className="ml-2 text-sm text-gray-300">
+          <aside
+            className="w-72 min-w-[18rem] max-w-[18rem] pr-0 border-r border-gray-800 bg-[#181a1b] rounded-xl shadow min-h-[calc(100vh-48px)] sticky top-0 overflow-y-auto max-h-[calc(100vh-48px)]"
+            style={{
+              scrollbarWidth: "thin",
+              scrollbarColor: "#23272b #181a1b"
+            }}
+          >
+            <style jsx global>{`
+              aside::-webkit-scrollbar {
+                width: 8px;
+                background: #181a1b;
+                border-radius: 8px;
+              }
+              aside::-webkit-scrollbar-thumb {
+                background: #23272b;
+                border-radius: 8px;
+              }
+              aside::-webkit-scrollbar-thumb:hover {
+                background: #2d3238;
+              }
+            `}</style>
+            <div className="flex flex-col gap-4 py-4 px-4">
+              {/* Input Modalities */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Input</h3>
+                <div className="flex flex-wrap gap-2">
+                  {modalityOptions.map((option) => (
+                    <label key={option} className="flex items-center gap-1 cursor-pointer text-xs text-gray-200">
+                      <input
+                        type="checkbox"
+                        id={`modality-${option}`}
+                        className="h-3 w-3 rounded border-gray-400 text-indigo-500 focus:ring-indigo-500"
+                        checked={selectedModalities.includes(option)}
+                        onChange={() => toggleFilter('modality', option)}
+                      />
                       {option}
                     </label>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  ))}
+                </div>
+              </section>
+              <hr className="my-1 border-gray-700" />
 
-            {/* Context length slider */}
-            <div className="mb-8">
-              <h3 className="text-sm font-medium text-gray-300 mb-3">Context Length</h3>
-              <div className="px-1 pt-2 pb-6">
+              {/* Context length slider */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Context</h3>
                 <input
                   type="range"
                   min="0"
                   max="100"
                   value={contextLengthRange}
                   onChange={(e) => setContextLengthRange(parseInt(e.target.value))}
-                  className="w-full h-2 bg-gradient-to-r from-blue-300 to-indigo-500 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-1 bg-gray-700 rounded appearance-none cursor-pointer"
                 />
-                <div className="flex justify-between mt-2 text-xs text-gray-500">
+                <div className="flex justify-between mt-1 text-[10px] text-gray-500 font-mono">
                   <span>4K</span>
                   <span>64K</span>
                   <span>1M</span>
                 </div>
-                <div className="mt-3 text-xs px-2 py-1 bg-indigo-50 rounded text-indigo-700 text-center">
+                <div className="mt-1 text-[11px] text-indigo-400 text-center font-semibold">
                   {contextLengthRange < 30
-                    ? "4K-16K tokens"
+                    ? "4K-16K"
                     : contextLengthRange < 60
-                      ? "32K-64K tokens"
-                      : "100K+ tokens"}
+                      ? "32K-64K"
+                      : "100K+"}
                 </div>
-              </div>
-            </div>
+              </section>
+              <hr className="my-1 border-gray-700" />
 
-            {/* Price range slider */}
-            <div className="mb-8">
-              <h3 className="text-sm font-medium text-gray-300 mb-3">Price Range</h3>
-              <div className="px-1 pt-2 pb-6">
+              {/* Price range slider */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Price</h3>
                 <input
                   type="range"
                   min="0"
                   max="100"
                   value={priceRange}
                   onChange={(e) => setPriceRange(parseInt(e.target.value))}
-                  className="w-full h-2 bg-gradient-to-r from-green-300 to-blue-500 rounded-lg appearance-none cursor-pointer price-slider"
+                  className="w-full h-1 bg-gray-700 rounded appearance-none cursor-pointer price-slider"
                 />
-                <div className="flex justify-between mt-2 text-xs text-gray-500">
-                  <span>FREE</span>
+                <div className="flex justify-between mt-1 text-[10px] text-gray-500 font-mono">
+                  <span>Free</span>
                   <span>$0.5</span>
                   <span>$10+</span>
                 </div>
-                <div className="mt-3 text-xs px-2 py-1 bg-green-900 rounded text-green-400 text-center">
+                <div className="mt-1 text-[11px] text-green-500 text-center font-semibold">
                   {priceRange < 20
-                    ? "Free models only"
+                    ? "Free"
                     : priceRange < 60
-                      ? "Under $1 per 1M tokens"
-                      : "Premium models"}
+                      ? "< $1/1M"
+                      : "Premium"}
                 </div>
-              </div>
-            </div>
+              </section>
+              <hr className="my-1 border-gray-700" />
 
-            {/* Series */}
-            <div className="mb-8">
-              <h3 className="text-sm font-medium text-gray-300 mb-3">Model Series</h3>
-              <div className="space-y-1">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="series-gpt"
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    checked={selectedSeries.includes('GPT')}
-                    onChange={() => toggleFilter('series', 'GPT')}
-                  />
-                  <label htmlFor="series-gpt" className="ml-2 text-sm text-gray-600">
-                    GPT
-                  </label>
+              {/* Model Series */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Series</h3>
+                <div className="flex flex-wrap gap-2">
+                  {seriesOptions.slice(0, 8).map((series: string) => (
+                    <label key={series} className="flex items-center gap-1 cursor-pointer text-xs text-gray-200">
+                      <input
+                        type="checkbox"
+                        id={`series-${series}`}
+                        className="h-3 w-3 rounded border-gray-400 text-indigo-500 focus:ring-indigo-500"
+                        checked={selectedSeries.includes(series)}
+                        onChange={() => toggleFilter('series', series)}
+                      />
+                      {series}
+                    </label>
+                  ))}
                 </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="series-claude"
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    checked={selectedSeries.includes('Claude')}
-                    onChange={() => toggleFilter('series', 'Claude')}
-                  />
-                  <label htmlFor="series-claude" className="ml-2 text-sm text-gray-600">
-                    Claude
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="series-gemini"
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    checked={selectedSeries.includes('Gemini')}
-                    onChange={() => toggleFilter('series', 'Gemini')}
-                  />
-                  <label htmlFor="series-gemini" className="ml-2 text-sm text-gray-600">
-                    Gemini
-                  </label>
-                </div>
-              </div>
-            </div>
+              </section>
+              <hr className="my-1 border-gray-700" />
 
-            {/* Categories with cleaner design */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-300">Categories</h3>
-                <button className="text-xs text-indigo-600 hover:text-indigo-800">
-                  See all
-                </button>
-              </div>
-              <div className="space-y-1">
-                {categories.slice(0, 3).map((category) => (
-                  <div key={category} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={`category-${category}`}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      checked={selectedCategories.includes(category)}
-                      onChange={() => toggleFilter('category', category)}
-                    />
-                    <label htmlFor={`category-${category}`} className="ml-2 text-sm text-gray-600">
+              {/* Categories */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Categories</h3>
+                <div className="flex flex-wrap gap-2">
+                  {categories.slice(0, 8).map((category: string) => (
+                    <label key={category} className="flex items-center gap-1 cursor-pointer text-xs text-gray-200">
+                      <input
+                        type="checkbox"
+                        id={`category-${category}`}
+                        className="h-3 w-3 rounded border-gray-400 text-indigo-500 focus:ring-indigo-500"
+                        checked={selectedCategories.includes(category)}
+                        onChange={() => toggleFilter('category', category)}
+                      />
                       {category}
                     </label>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  ))}
+                </div>
+              </section>
+              <hr className="my-1 border-gray-700" />
 
-            {/* Parameters */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-300">Supported Parameters</h3>
-                <button className="text-xs text-indigo-600 hover:text-indigo-800">
-                  See all
-                </button>
-              </div>
-              <div className="space-y-1">
-                {parameters.slice(0, 3).map((param) => (
-                  <div key={param} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={`param-${param}`}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      checked={selectedParameters.includes(param)}
-                      onChange={() => toggleFilter('param', param)}
-                    />
-                    <label htmlFor={`param-${param}`} className="ml-2 text-sm text-gray-600">
+              {/* Parameters */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Parameters</h3>
+                <div className="flex flex-wrap gap-2">
+                  {parameters.slice(0, 8).map((param: string) => (
+                    <label key={param} className="flex items-center gap-1 cursor-pointer text-xs text-gray-200">
+                      <input
+                        type="checkbox"
+                        id={`param-${param}`}
+                        className="h-3 w-3 rounded border-gray-400 text-indigo-500 focus:ring-indigo-500"
+                        checked={selectedParameters.includes(param)}
+                        onChange={() => toggleFilter('param', param)}
+                      />
                       {param}
                     </label>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  ))}
+                </div>
+              </section>
+              <hr className="my-1 border-gray-700" />
 
-            {/* Providers */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-300">Providers</h3>
-                <button className="text-xs text-indigo-600 hover:text-indigo-800">
-                  See all
-                </button>
-              </div>
-              <div className="space-y-1">
-                {providers.slice(0, 3).map((provider) => (
-                  <div key={provider} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={`provider-${provider}`}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      checked={selectedProviders.includes(provider)}
-                      onChange={() => toggleFilter('provider', provider)}
-                    />
-                    <label htmlFor={`provider-${provider}`} className="ml-2 text-sm text-gray-600">
+              {/* Providers */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Providers</h3>
+                <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
+                  {providers.slice(0, 12).map((provider: string) => (
+                    <label key={provider} className="flex items-center gap-1 cursor-pointer text-xs text-gray-200">
+                      <input
+                        type="checkbox"
+                        id={`provider-${provider}`}
+                        className="h-3 w-3 rounded border-gray-400 text-indigo-500 focus:ring-indigo-500"
+                        checked={selectedProviders.includes(provider)}
+                        onChange={() => toggleFilter('provider', provider)}
+                      />
                       {provider}
                     </label>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  ))}
+                </div>
+              </section>
+              <hr className="my-1 border-gray-700" />
 
-            {/* Clear All Filters button */}
-            <button
-              onClick={resetFilters}
-              className="w-full py-2 px-4 border border-gray-700 rounded-md text-sm font-medium text-gray-300 bg-[#181818] hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            >
-              Clear All Filters
-            </button>
-          </div>
+              {/* Clear All Filters button */}
+              <button
+                onClick={resetFilters}
+                className="w-full py-1.5 px-2 border border-gray-700 rounded text-xs font-semibold text-gray-200 bg-[#23272b] hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition"
+              >
+                Clear All
+              </button>
+            </div>
+          </aside>
           {/* Main Content */}
-          <div className="flex-1 pl-8">
+          <div className="flex-1 pl-8 max-w-full">
             <div className="mb-6">
-              <h1 className="text-2xl font-semibold text-white">Models</h1>
+              <h1 className="text-3xl font-bold text-white tracking-tight">Models</h1>
               <div className="flex justify-between items-center mt-4">
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-gray-400">
                   {filteredModels.length === models.length
                     ? `${models.length} models`
                     : `${filteredModels.length} of ${models.length} models`}
@@ -661,56 +648,46 @@ export default function ModelsPage() {
             </div>
 
             {viewMode === "table" ? (
-              <div className="overflow-x-auto border border-gray-800 rounded-lg shadow-sm">
-                <table className="min-w-full divide-y divide-gray-800">
-                  <thead className="bg-[#181818]">
+              <div className="overflow-x-auto border border-gray-800 rounded-lg shadow bg-[#181818]">
+                <table className="min-w-full divide-y divide-gray-700">
+                  <thead className="bg-[#232323]">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                        Model Name & ID
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                        Input ($/1M tokens)
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                        Output ($/1M tokens)
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                        Context (tokens)
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                        Series
-                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Model Name & ID</th>
+                      <th className="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Input ($/1M tokens)</th>
+                      <th className="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Output ($/1M tokens)</th>
+                      <th className="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Context (tokens)</th>
+                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Series</th>
                     </tr>
                   </thead>
                   <tbody className="bg-[#181818] divide-y divide-gray-800">
-                    {filteredModels.map((model) => (
-                      <tr key={model.id} className="hover:bg-[#222] transition-colors">
+                    {filteredModels.map((model, idx) => (
+                      <tr key={model.id || model.modelId || idx} className="hover:bg-[#232323] transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-start">
                             <div>
                               <div className="flex items-center">
-                                <Link href={`/models/${model.id}`} className="text-sm font-medium text-green-500 hover:text-green-400 transition-colors">
+                                <Link href={`/models/${model.id}`} className="text-sm font-semibold text-green-400 hover:underline">
                                   {model.name}
                                 </Link>
                                 {model.isFree && (
-                                  <span className="ml-2 text-xs bg-green-900 text-green-400 px-2 py-0.5 rounded-full font-medium">Free</span>
+                                  <span className="ml-2 text-xs bg-green-900 text-green-300 px-2 py-0.5 rounded-full font-medium">Free</span>
                                 )}
                               </div>
                               <div className="text-xs text-gray-500 font-mono mt-1">{model.modelId}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 text-center">
-                          ${model.inputCost.toFixed(2)}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-green-300 text-center">
+                          {formatCurrency(model.inputCost)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 text-center">
-                          ${model.outputCost.toFixed(2)}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-green-300 text-center">
+                          {formatCurrency(model.outputCost)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 text-center">
-                          {model.context.toLocaleString()}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 text-center">
+                          {model.context ? model.context.toLocaleString() : <span className="text-gray-400">N/A</span>}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <span className="text-xs px-2 py-1 rounded-full font-medium bg-green-900 text-green-400">
+                          <span className="text-xs px-2 py-1 rounded-full font-medium bg-gray-800 text-gray-300">
                             {model.series}
                           </span>
                         </td>
@@ -721,66 +698,74 @@ export default function ModelsPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {filteredModels.map((model) => (
-                  <div
-                    key={model.id}
-                    className="border border-gray-800 rounded-lg p-5 hover:shadow-lg hover:border-green-500 transition-shadow duration-300 bg-[#181818] relative overflow-hidden"
-                  >
+                {filteredModels.map((model, idx) => (
+                  <div key={model.id || model.modelId || idx} className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow duration-300 bg-white relative overflow-hidden">
                     {/* Top colored accent bar based on model series */}
                     <div
-                      className={`absolute top-0 left-0 right-0 h-1 ${model.series === 'Gemini'
-                          ? 'bg-green-500'
-                          : model.series === 'Claude'
-                            ? 'bg-green-700'
-                            : 'bg-green-900'
+                      className={`absolute top-0 left-0 right-0 h-1 ${model.series === 'Gemini' ? 'bg-indigo-500' :
+                        model.series === 'Claude' ? 'bg-blue-500' :
+                          'bg-pink-500'
                         }`}
                     ></div>
 
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <Link href={`/models/${model.id}`} className="font-medium text-green-500 text-base hover:text-green-400 transition-colors">
+                        <Link href={`/models/${model.id}`} className="font-medium text-indigo-600 text-base hover:text-indigo-700 transition-colors">
                           {model.name}
                         </Link>
                         <p className="text-xs text-gray-500 font-mono mt-1">{model.modelId}</p>
                       </div>
                       <div className="flex space-x-2">
                         {model.isFree && (
-                          <span className="text-xs bg-green-900 text-green-400 px-2 py-1 rounded-full font-medium">Free</span>
+                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">Free</span>
                         )}
-                        <span className="text-xs px-2 py-1 rounded-full font-medium bg-green-900 text-green-400">
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full font-medium ${model.series === 'Gemini' ? 'bg-indigo-50 text-indigo-700' :
+                            model.series === 'Claude' ? 'bg-blue-50 text-blue-700' :
+                              'bg-pink-50 text-pink-700'
+                            }`}
+                        >
                           {model.series}
                         </span>
                       </div>
                     </div>
 
-                    <p className="mt-3 text-sm text-gray-400 line-clamp-2 overflow-hidden text-ellipsis min-h-[40px]">
+                    <p className="mt-3 text-sm text-gray-600 line-clamp-2 overflow-hidden text-ellipsis min-h-[40px]">
                       {model.description}
                     </p>
 
-                    <div className="mt-4 pt-3 border-t border-gray-800 grid grid-cols-3 gap-4 text-xs">
+                    <div className="mt-4 pt-3 border-t border-gray-100 grid grid-cols-3 gap-4 text-xs">
                       <div className="flex flex-col">
                         <div className="text-gray-500 mb-1">Input</div>
-                        <div className="font-medium text-gray-200">${model.inputCost.toFixed(2)}/1M</div>
+                        <div className="font-medium">${model.inputCost.toFixed(2)}/1M</div>
                       </div>
                       <div className="flex flex-col">
                         <div className="text-gray-500 mb-1">Output</div>
-                        <div className="font-medium text-gray-200">${model.outputCost.toFixed(2)}/1M</div>
+                        <div className="font-medium">${model.outputCost.toFixed(2)}/1M</div>
                       </div>
                       <div className="flex flex-col">
                         <div className="text-gray-500 mb-1">Context</div>
-                        <div className="font-medium text-gray-200">{(model.context / 1000)}K</div>
+                        <div className="font-medium">
+                          {model.context
+                            ? `${(model.context / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })}K`
+                            : <span className="text-gray-400">N/A</span>
+                          }
+                        </div>
                       </div>
                     </div>
 
                     <div className="mt-4 flex justify-between items-center">
                       <div className="flex flex-wrap gap-1">
-                        {model.categories.map(category => (
-                          <span key={category} className="inline-block text-[10px] px-2 py-0.5 bg-[#222] text-gray-400 rounded-full">
+                        {(model.categories && model.categories.length > 0
+                          ? model.categories
+                          : ["General"]
+                        ).map((category: string) => (
+                          <span key={category} className="inline-block text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
                             {category}
                           </span>
                         ))}
                       </div>
-                      <Link href={`/models/${model.id}`} className="text-xs px-3 py-1 bg-green-900 text-green-400 hover:bg-green-800 transition-colors rounded-md font-medium">
+                      <Link href={`/models/${model.id}`} className="text-xs px-3 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors rounded-md font-medium">
                         View details
                       </Link>
                     </div>
