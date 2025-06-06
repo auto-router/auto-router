@@ -9,35 +9,19 @@ const models = [
     {
         name: 'Gemini 1.5 Pro',
         provider: 'Google DeepMind',
-        tokens: '83.1B',
-        latency: '2.1 sec',
-        growth: '+6.75%',
-        isNew: true,
         icon: 'https://openrouter.ai/images/icons/GoogleGemini.svg',
-        useFor: 'Advanced General Reasoning',
     },
     {
         name: 'GPT-4.1',
         provider: 'OpenAI',
-        tokens: '39.9B',
-        latency: '400ms',
-        growth: '+13.06%',
-        isNew: true,
         icon: 'https://openrouter.ai/images/icons/OpenAI.svg',
-        useFor: 'Creative Writing and Coding',
     },
     {
         name: 'Claude 3 Opus',
         provider: 'Anthropic',
-        tokens: '34.5B',
-        latency: '1.5 sec',
-        growth: '+5.20%',
-        isNew: false,
         icon: 'https://openrouter.ai/images/icons/Anthropic.svg',
-        useFor: 'Philosophical Reasoning and Deep Math',
     },
 ];
-
 
 const prompts = [
     { text: 'Summarize the key points from this 2-hour video lecture.', color: promptColors[0] },
@@ -63,7 +47,7 @@ export default function UnifiedLLMInterface() {
                 return newIndex;
             });
             setSelectedModelIndex(prev => (prev + 1) % models.length);
-        }, 1000);
+        }, 1500);
         return () => clearInterval(interval);
     }, []);
 
@@ -77,10 +61,12 @@ export default function UnifiedLLMInterface() {
             const svgRect = canvasRef.current.getBoundingClientRect();
 
             setLineCoords({
-                x1: promptRect.right - svgRect.left,
-                y1: promptRect.top + 25 - svgRect.top,
-                x2: modelRect.left - svgRect.left,
-                y2: modelRect.top + modelRect.height / 2 - svgRect.top
+                // Start at bottom center of prompt panel
+                x1: promptRect.left + promptRect.width / 2 - svgRect.left,
+                y1: promptRect.bottom - svgRect.top,
+                // End at top center of selected model card
+                x2: modelRect.left + modelRect.width / 2 - svgRect.left,
+                y2: modelRect.top - svgRect.top
             });
         };
 
@@ -90,100 +76,101 @@ export default function UnifiedLLMInterface() {
     }, [selectedModelIndex, messageIndex]);
 
     return (
-        <div className="relative flex flex-col lg:flex-row items-start justify-between p-10 w-full max-w-screen-xl mx-auto">
-            <svg ref={canvasRef} className="absolute top-0 left-0 w-full h-full pointer-events-none z-0">
-                <motion.line
-                    initial={false}
-                    animate={{
-                        x1: lineCoords.x1,
-                        y1: lineCoords.y1,
-                        x2: lineCoords.x2,
-                        y2: lineCoords.y2,
-                        stroke: currentColor
-                    }}
-                    transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-                    strokeWidth="2"
-                />
-            </svg>
-
-            <div className="flex-1 space-y-6 z-10">
+        <div className="relative flex flex-col items-center p-10 w-full max-w-2xl mx-auto bg-black">
+            {/* Headings and prompt */}
+            <div className="w-full space-y-6 z-10 mb-30">
                 <motion.h1
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6 }}
-                    className="text-4xl sm:text-5xl font-bold"
+                    className="text-3xl sm:text-5xl font-bold text-white text-center"
                 >
-                    The Unified <br /> Interface For LLMs
+                    One Platform. Every Model. Smart AI Routing.
                 </motion.h1>
-                <p className="text-lg text-gray-500">
-                    <span className="text-indigo-500 font-medium">Simplifying AI integration</span> across all major model providers
+                <p className="text-lg text-gray-300 text-center">
+                    <span className="text-green-500 font-medium">Seamlessly access the best AI models</span>
+                    —automatically routed, cost-optimized, and unified under one simple API.
                 </p>
-                <div ref={promptRef} className="flex items-center gap-2 bg-white border shadow-md rounded-lg px-4 py-3 max-w-md">
-                    <motion.span
-                        className="w-3 h-3 rounded-full"
-                        animate={{ backgroundColor: currentColor }}
-                        transition={{ duration: 0.3 }}
-                    />
-                    <AnimatePresence mode="wait">
-                        <motion.p
-                            key={messageIndex}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.3 }}
-                            className="text-sm text-gray-800 font-medium"
-                        >
-                            <span className="text-gray-600 font-semibold">User Prompt:</span>
-                            <motion.span
-                                className="ml-1"
-                                animate={{ color: currentColor }}
-                                transition={{ duration: 0.3 }}
-                            >
-                                {prompts[messageIndex].text}
-                            </motion.span>
-                        </motion.p>
-                    </AnimatePresence>
-                </div>
-            </div>
-
-            <div className="mt-10 lg:mt-0 lg:ml-12 w-full max-w-md z-10">
-                <p className="text-sm text-gray-600 mb-2">Featured Models</p>
-                <div className="space-y-4">
-                    {models.map((model, i) => (
-                        <motion.div
-                            key={i}
-                            ref={el => { modelRefs.current[i] = el; }}
-                            initial={{ opacity: 0, x: 50 }}
+                <div className="relative w-full flex flex-col items-center" style={{ minHeight: 220 }}>
+                    <svg
+                        ref={canvasRef}
+                        className="absolute top-0 left-0 w-full h-full pointer-events-none z-0"
+                        style={{ height: "100%" }}
+                    >
+                        <motion.line
+                            initial={false}
                             animate={{
-                                opacity: 1,
-                                x: 0,
-                                borderColor: i === selectedModelIndex ? currentColor : '#e5e7eb',
-                                boxShadow: i === selectedModelIndex ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)' : 'none'
+                                x1: lineCoords.x1,
+                                y1: lineCoords.y1,
+                                x2: lineCoords.x2,
+                                y2: lineCoords.y2,
+                                stroke: currentColor
                             }}
-                            transition={{ delay: i * 0.2 }}
-                            className="flex items-center justify-between p-4 rounded-xl border bg-white"
-                            style={{ borderColor: '#e5e7eb' }}
-                        >
-                            <div className="flex items-center gap-3">
-                                <img src={model.icon} alt={model.provider} className="w-6 h-6 rounded-full" />
-                                <div>
-                                    <p className="font-semibold text-sm">{model.name}</p>
-                                    <p className="text-xs text-gray-400">by {model.provider}</p>
-                                    <p className="text-xs italic text-gray-500">Best for: {model.useFor}</p>
-                                </div>
-                                {model.isNew && (
-                                    <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">New</span>
-                                )}
-                            </div>
-                            <div className="text-right space-y-1 text-xs">
-                                <p>{model.tokens} <span className="text-gray-400">Tokens/wk</span></p>
-                                <p>{model.latency} <span className="text-gray-400">Latency</span></p>
-                                <p className={`${model.growth.includes('+') ? 'text-green-500' : 'text-red-500'}`}>
-                                    {model.growth} <span className="text-gray-400">Growth</span>
-                                </p>
-                            </div>
-                        </motion.div>
-                    ))}
+                            transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                            strokeWidth="2"
+                        />
+                    </svg>
+                    <div
+                        ref={promptRef}
+                        className="flex items-center gap-3 bg-gradient-to-br from-[#232323] to-[#181818] border-2 rounded-xl w-[420px] h-20 min-h-[120px] max-w-full mx-auto mt-0 mb-16 z-10 overflow-hidden shadow-lg"
+                        style={{
+                            position: "relative",
+                            justifyContent: "center",
+                            borderColor: currentColor,
+                            padding: "0 1.5rem"
+                        }}
+                    >
+                        <motion.span
+                            className="w-4 h-4 rounded-full mr-2"
+                            animate={{ backgroundColor: currentColor }}
+                            transition={{ duration: 0.3 }}
+                        />
+                        <AnimatePresence mode="wait">
+                            <motion.p
+                                key={messageIndex}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.3 }}
+                                className="text-sm sm:text-base text-gray-100 font-medium leading-snug"
+                            >
+                                <span className="text-gray-400 font-semibold">User Prompt:</span>
+                                <motion.span
+                                    className="ml-2"
+                                    animate={{ color: currentColor }}
+                                    transition={{ duration: 0.3 }}
+                                >
+                                    {prompts[messageIndex].text}
+                                </motion.span>
+                            </motion.p>
+                        </AnimatePresence>
+                    </div>
+                    <div className="flex flex-row justify-center gap-4 w-full z-10 mt-2">
+                        {models.map((model, i) => (
+                            <motion.div
+                                key={i}
+                                ref={el => { modelRefs.current[i] = el; }}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{
+                                    opacity: 1,
+                                    y: 0,
+                                    borderColor: i === selectedModelIndex ? currentColor : '#222',
+                                    boxShadow: i === selectedModelIndex ? '0 4px 8px 0 rgba(0,0,0,0.08)' : 'none'
+                                }}
+                                transition={{ delay: i * 0.15 }}
+                                className="flex flex-col items-center gap-2 p-3 rounded-lg border bg-[#161616] min-w-[120px]"
+                                style={{ borderColor: i === selectedModelIndex ? currentColor : '#222' }}
+                            >
+                                <img
+                                    src={model.icon}
+                                    alt={model.provider}
+                                    className={`w-8 h-8 rounded-full ${model.provider === "OpenAI" ? "invert" : ""}`}
+                                />
+                                <p className="font-semibold text-sm text-white text-center">{model.name}</p>
+                                <p className="text-xs text-gray-400 text-center">{model.provider}</p>
+                            </motion.div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>

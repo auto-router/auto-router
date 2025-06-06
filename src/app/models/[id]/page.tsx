@@ -113,9 +113,9 @@ const ModelDetailsPage = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 w-full">
       {/* Back to models link */}
-      <Link 
-        href="/models" 
-        className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-6"
+      <Link
+        href="/models"
+        className="inline-flex items-center text-sm text-green-500 hover:text-green-400 mb-6"
       >
         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -125,8 +125,8 @@ const ModelDetailsPage = () => {
 
       {/* Model header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold">{model.name}</h1>
-        <div className="flex items-center mt-2 text-sm text-gray-500 font-mono">
+        <h1 className="text-3xl font-semibold text-white">{model.name}</h1>
+        <div className="flex items-center mt-2 text-sm text-gray-400 font-mono">
           {model.modelId}
           <button className="ml-2 text-gray-400 hover:text-gray-600">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,18 +136,18 @@ const ModelDetailsPage = () => {
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-400">
             Created {model.dateCreated}
           </div>
-          <div className="text-sm text-gray-600 flex items-center">
+          <div className="text-sm text-gray-400 flex items-center">
             <span className="mx-2">•</span>
             {formatNumber(model.contextSize || 0)} context
           </div>
-          <div className="text-sm text-gray-600 flex items-center">
+          <div className="text-sm text-gray-400 flex items-center">
             <span className="mx-2">•</span>
             Starting at ${model.inputCost.toFixed(2)}/1M input tokens
           </div>
-          <div className="text-sm text-gray-600 flex items-center">
+          <div className="text-sm text-gray-400 flex items-center">
             <span className="mx-2">•</span>
             Starting at ${model.outputCost.toFixed(2)}/1M output tokens
           </div>
@@ -155,12 +155,12 @@ const ModelDetailsPage = () => {
 
         <div className="mt-4 flex flex-wrap gap-2">
           {model.categories.map((category, index) => (
-            <span 
-              key={index} 
-              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+            <span
+              key={index}
+              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900 text-green-400"
             >
               {category}
-              {index < 2 && <span className="ml-1 text-xs text-blue-500">#{index + 1}</span>}
+              {index < 2 && <span className="ml-1 text-xs text-green-500">#{index + 1}</span>}
             </span>
           ))}
         </div>
@@ -168,13 +168,13 @@ const ModelDetailsPage = () => {
 
       {/* Action buttons */}
       <div className="flex gap-4 mb-8">
-        <button className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors font-medium flex items-center">
+        <button className="px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors font-medium flex items-center">
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
           Chat
         </button>
-        <button className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors font-medium flex items-center">
+        <button className="px-6 py-2 bg-[#181818] border border-gray-700 text-gray-200 rounded-md hover:bg-gray-900 transition-colors font-medium flex items-center">
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
@@ -183,7 +183,7 @@ const ModelDetailsPage = () => {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-8">
+      <div className="border-b border-gray-800 mb-8">
         <nav className="-mb-px flex space-x-8">
           {['Overview', 'Providers', 'Apps', 'Activity', 'Uptime', 'API'].map((tab) => (
             <button
@@ -191,9 +191,9 @@ const ModelDetailsPage = () => {
               onClick={() => setActiveTab(tab.toLowerCase())}
               className={`
                 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-                ${activeTab === tab.toLowerCase() 
-                  ? 'border-indigo-500 text-indigo-600' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+                ${activeTab === tab.toLowerCase()
+                  ? 'border-green-500 text-green-500'
+                  : 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400'}
               `}
             >
               {tab}
@@ -206,7 +206,7 @@ const ModelDetailsPage = () => {
       <div className="mb-12">
         {activeTab === 'overview' && (
           <div>
-            <motion.p 
+            <motion.p
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
@@ -216,26 +216,26 @@ const ModelDetailsPage = () => {
             </motion.p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-              <div className="border border-gray-200 rounded-lg p-6 bg-white">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Throughput</h3>
-                <div className="h-48 bg-gray-50 rounded-lg flex items-center justify-center">
+              <div className="border border-gray-700 rounded-lg p-6 bg-[#181818]">
+                <h3 className="text-lg font-medium text-white mb-4">Throughput</h3>
+                <div className="h-48 bg-black rounded-lg flex items-center justify-center">
                   <svg className="w-full h-full text-blue-500 opacity-80" viewBox="0 0 400 200">
-                    <path d="M0,150 C50,120 100,180 150,120 C200,60 250,90 300,60 C350,30 400,90 400,90" 
-                          fill="none" stroke="currentColor" strokeWidth="2" />
-                    <path d="M0,160 C50,140 100,170 150,140 C200,110 250,130 300,100 C350,70 400,110 400,110" 
-                          fill="none" stroke="#10B981" strokeWidth="2" />
+                    <path d="M0,150 C50,120 100,180 150,120 C200,60 250,90 300,60 C350,30 400,90 400,90"
+                      fill="none" stroke="currentColor" strokeWidth="2" />
+                    <path d="M0,160 C50,140 100,170 150,140 C200,110 250,130 300,100 C350,70 400,110 400,110"
+                      fill="none" stroke="#10B981" strokeWidth="2" />
                   </svg>
                 </div>
               </div>
 
-              <div className="border border-gray-200 rounded-lg p-6 bg-white">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Latency</h3>
-                <div className="h-48 bg-gray-50 rounded-lg flex items-center justify-center">
+              <div className="border border-gray-700 rounded-lg p-6 bg-[#181818]">
+                <h3 className="text-lg font-medium text-white mb-4">Latency</h3>
+                <div className="h-48 bg-black rounded-lg flex items-center justify-center">
                   <svg className="w-full h-full text-blue-500 opacity-80" viewBox="0 0 400 200">
-                    <path d="M0,100 C20,90 40,120 60,110 C100,80 120,150 160,130 C200,110 240,90 280,70 C320,50 360,90 400,70" 
-                          fill="none" stroke="currentColor" strokeWidth="2" />
-                    <path d="M0,150 C20,140 40,130 60,135 C100,140 120,120 160,125 C200,130 240,120 280,130 C320,140 360,120 400,130" 
-                          fill="none" stroke="#10B981" strokeWidth="2" />
+                    <path d="M0,100 C20,90 40,120 60,110 C100,80 120,150 160,130 C200,110 240,90 280,70 C320,50 360,90 400,70"
+                      fill="none" stroke="currentColor" strokeWidth="2" />
+                    <path d="M0,150 C20,140 40,130 60,135 C100,140 120,120 160,125 C200,130 240,120 280,130 C320,140 360,120 400,130"
+                      fill="none" stroke="#10B981" strokeWidth="2" />
                   </svg>
                 </div>
               </div>
@@ -245,7 +245,7 @@ const ModelDetailsPage = () => {
 
         {activeTab === 'apps' && (
           <div>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
@@ -255,18 +255,18 @@ const ModelDetailsPage = () => {
 
               <div className="space-y-4">
                 {apps.map((app, index) => (
-                  <div 
-                    key={app.id} 
-                    className="flex items-center justify-between py-4 border-b border-gray-100"
+                  <div
+                    key={app.id}
+                    className="flex items-center justify-between py-4 border-b border-gray-700"
                   >
                     <div className="flex items-center">
                       <span className="text-gray-500 mr-4 w-6 text-center">{index + 1}.</span>
                       <span className="text-xl mr-4">{app.icon}</span>
                       <div>
                         <div className="flex items-center">
-                          <h3 className="font-medium text-gray-900">{app.name}</h3>
+                          <h3 className="font-medium text-white">{app.name}</h3>
                           {app.isNew && (
-                            <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">new</span>
+                            <span className="ml-2 px-2 py-0.5 text-xs bg-green-900 text-green-400 rounded-full">new</span>
                           )}
                         </div>
                         <p className="text-sm text-gray-500">{app.description}</p>
@@ -284,7 +284,7 @@ const ModelDetailsPage = () => {
 
         {activeTab === 'activity' && (
           <div>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
@@ -292,11 +292,11 @@ const ModelDetailsPage = () => {
               <h2 className="text-xl font-semibold mb-4">Recent activity on {model.name}</h2>
               <p className="text-gray-600 mb-6">Tokens processed per day</p>
 
-              <div className="border border-gray-200 rounded-lg p-6 bg-white h-96 flex items-end space-x-2">
-                {[3,5,9,12,14,10,15,11,11,17,19,22,17,18,19,21,23,21,18,16,12].map((value, i) => (
-                  <div 
-                    key={i} 
-                    className="bg-blue-500 rounded-t w-full"
+              <div className="border border-gray-700 rounded-lg p-6 bg-[#181818] h-96 flex items-end space-x-2">
+                {[3, 5, 9, 12, 14, 10, 15, 11, 11, 17, 19, 22, 17, 18, 19, 21, 23, 21, 18, 16, 12].map((value, i) => (
+                  <div
+                    key={i}
+                    className="bg-green-700 rounded-t w-full"
                     style={{ height: `${value * 4}%` }}
                   ></div>
                 ))}
@@ -307,7 +307,7 @@ const ModelDetailsPage = () => {
 
         {activeTab === 'uptime' && (
           <div>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
@@ -315,14 +315,14 @@ const ModelDetailsPage = () => {
               <h2 className="text-xl font-semibold mb-4">Uptime stats for {model.name}</h2>
               <p className="text-gray-600 mb-6">Uptime stats for {model.name} across all providers</p>
 
-              <div className="border border-gray-200 rounded-lg p-6 bg-white mb-8 relative">
-                <div className="absolute top-4 right-4 text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">LIVE</div>
+              <div className="border border-gray-700 rounded-lg p-6 bg-[#181818] mb-8 relative">
+                <div className="absolute top-4 right-4 text-xs px-2 py-1 bg-green-900 text-green-400 rounded-full">LIVE</div>
                 <div className="h-64 w-full">
                   <svg className="w-full h-full" viewBox="0 0 800 200">
-                    <path d="M0,100 C20,90 40,95 60,95 C100,95 120,90 160,90 C200,90 240,100 280,100 C320,100 360,100 800,100" 
-                          fill="none" stroke="#10B981" strokeWidth="2" />
-                    <path d="M0,100 C20,90 40,120 60,110 C100,80 120,70 160,90 C200,110 240,120 280,90 C320,60 360,120 400,70 C440,100 480,130 520,90 C560,50 600,100 640,80 C680,90 720,70 760,65 C800,60 840,80 880,70" 
-                          fill="none" stroke="#F97316" strokeWidth="2" />
+                    <path d="M0,100 C20,90 40,95 60,95 C100,95 120,90 160,90 C200,90 240,100 280,100 C320,100 360,100 800,100"
+                      fill="none" stroke="#10B981" strokeWidth="2" />
+                    <path d="M0,100 C20,90 40,120 60,110 C100,80 120,70 160,90 C200,110 240,120 280,90 C320,60 360,120 400,70 C440,100 480,130 520,90 C560,50 600,100 640,80 C680,90 720,70 760,65 C800,60 840,80 880,70"
+                      fill="none" stroke="#F97316" strokeWidth="2" />
                   </svg>
                 </div>
                 <div className="flex justify-between text-sm text-gray-500 mt-4">
@@ -359,7 +359,7 @@ const ModelDetailsPage = () => {
 
         {activeTab === 'api' && (
           <div>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
@@ -368,7 +368,7 @@ const ModelDetailsPage = () => {
               <p className="text-gray-600 mb-6">OpenRouter normalizes requests and responses across providers for you.</p>
 
               <div className="mb-6">
-                <button className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors font-medium flex items-center">
+                <button className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors font-medium flex items-center">
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                   </svg>
@@ -382,42 +382,42 @@ const ModelDetailsPage = () => {
                   <span className="bg-gray-700 px-3 py-1 rounded text-xs">python</span>
                   <span className="bg-gray-700 px-3 py-1 rounded text-xs">typescript</span>
                 </div>
-                <pre className="text-green-400">from</pre> openai <pre className="text-green-400">import</pre> OpenAI<br/><br/>
-                
-                client = OpenAI(<br/>
-                {'  '}base_url=<pre className="text-orange-300">"https://openrouter.ai/api/v1"</pre>,<br/>
-                {'  '}api_key=<pre className="text-orange-300">"&lt;OPENROUTER_API_KEY&gt;"</pre>,<br/>
+                <pre className="text-green-400">from</pre> openai <pre className="text-green-400">import</pre> OpenAI<br /><br />
+
+                client = OpenAI(<br />
+                {'  '}base_url=<pre className="text-orange-300">"https://openrouter.ai/api/v1"</pre>,<br />
+                {'  '}api_key=<pre className="text-orange-300">"&lt;OPENROUTER_API_KEY&gt;"</pre>,<br />
                 )
-                <br/><br/>
-                
-                completion = client.chat.completions.create(<br/>
-                {'  '}model=<pre className="text-orange-300">"google/gemini-2.5-pro-preview-03-25"</pre>,<br/>
-                {'  '}messages=[<br/>
-                {'    '}&#123;<pre className="text-purple-300">"role"</pre>: <pre className="text-orange-300">"user"</pre>, <pre className="text-purple-300">"content"</pre>: <pre className="text-orange-300">"Hello, who are you?"</pre>&#125;<br/>
-                {'  '}]<br/>
-                )<br/><br/>
-                
+                <br /><br />
+
+                completion = client.chat.completions.create(<br />
+                {'  '}model=<pre className="text-orange-300">"google/gemini-2.5-pro-preview-03-25"</pre>,<br />
+                {'  '}messages=[<br />
+                {'    '}&#123;<pre className="text-purple-300">"role"</pre>: <pre className="text-orange-300">"user"</pre>, <pre className="text-purple-300">"content"</pre>: <pre className="text-orange-300">"Hello, who are you?"</pre>&#125;<br />
+                {'  '}]<br />
+                )<br /><br />
+
                 <pre className="text-blue-400">print</pre>(completion.choices[0].message.content)
               </div>
 
               <h3 className="text-lg font-medium mb-4">More models from Google</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all bg-white">
-                  <h4 className="font-medium mb-1">PaLM 2 Chat</h4>
-                  <p className="text-sm text-gray-600 mb-3">PaLM 2 is a language model by Google with improved multilingual, reasoning and coding capabilities.</p>
-                  <button className="text-indigo-600 text-sm hover:text-indigo-800">View details →</button>
+                <div className="border border-gray-700 rounded-lg p-4 hover:shadow-md transition-all bg-[#181818]">
+                  <h4 className="font-medium mb-1 text-white">PaLM 2 Chat</h4>
+                  <p className="text-sm text-gray-400 mb-3">PaLM 2 is a language model by Google with improved multilingual, reasoning and coding capabilities.</p>
+                  <button className="text-green-500 text-sm hover:text-green-400">View details →</button>
                 </div>
-                
-                <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all bg-white">
-                  <h4 className="font-medium mb-1">Gemini 2.5 Flash Preview</h4>
-                  <p className="text-sm text-gray-600 mb-3">Gemini 2.5 Flash is Google's state-of-the-art workhorse model, specifically designed for advanced reasoning.</p>
-                  <button className="text-indigo-600 text-sm hover:text-indigo-800">View details →</button>
+
+                <div className="border border-gray-700 rounded-lg p-4 hover:shadow-md transition-all bg-[#181818]">
+                  <h4 className="font-medium mb-1 text-white">Gemini 2.5 Flash Preview</h4>
+                  <p className="text-sm text-gray-400 mb-3">Gemini 2.5 Flash is Google's state-of-the-art workhorse model, specifically designed for advanced reasoning.</p>
+                  <button className="text-green-500 text-sm hover:text-green-400">View details →</button>
                 </div>
-                
-                <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all bg-white">
-                  <h4 className="font-medium mb-1">Gemini 2.5 Pro Experimental</h4>
-                  <p className="text-sm text-gray-600 mb-3">A more advanced version of Gemini 2.5 Pro with experimental features and capabilities.</p>
-                  <button className="text-indigo-600 text-sm hover:text-indigo-800">View details →</button>
+
+                <div className="border border-gray-700 rounded-lg p-4 hover:shadow-md transition-all bg-[#181818]">
+                  <h4 className="font-medium mb-1 text-white">Gemini 2.5 Pro Experimental</h4>
+                  <p className="text-sm text-gray-400 mb-3">A more advanced version of Gemini 2.5 Pro with experimental features and capabilities.</p>
+                  <button className="text-green-500 text-sm hover:text-green-400">View details →</button>
                 </div>
               </div>
             </motion.div>
@@ -428,4 +428,4 @@ const ModelDetailsPage = () => {
   );
 };
 
-export default ModelDetailsPage; 
+export default ModelDetailsPage;

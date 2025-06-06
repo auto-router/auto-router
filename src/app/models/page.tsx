@@ -294,28 +294,28 @@ export default function ModelsPage() {
   ];
 
   return (
-    <main className="flex min-h-screen flex-col">
+    <main className="flex min-h-screen flex-col bg-black">
       <SliderStyles />
       <div className="max-w-7xl mx-auto px-4 py-6 w-full">
         <div className="flex">
-          {/* Left Sidebar - Updated for cleaner design */}
-          <div className="w-64 pr-6 border-r border-gray-200 relative">
+          {/* Left Sidebar */}
+          <div className="w-64 pr-6 border-r border-gray-800 relative bg-[#181818]">
             {/* Add a subtle shadow for separation */}
             <div className="absolute top-0 right-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-gray-200 to-transparent"></div>
             {/* Input Modalities */}
             <div className="mb-8">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Input Modalities</h3>
+              <h3 className="text-sm font-medium text-gray-300 mb-3">Input Modalities</h3>
               <div className="space-y-1">
                 {modalityOptions.map((option) => (
                   <div key={option} className="flex items-center">
                     <input
                       type="checkbox"
                       id={`modality-${option}`}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      className="h-4 w-4 rounded border-gray-700 text-green-500 focus:ring-green-500"
                       checked={selectedModalities.includes(option)}
                       onChange={() => toggleFilter('modality', option)}
                     />
-                    <label htmlFor={`modality-${option}`} className="ml-2 text-sm text-gray-600">
+                    <label htmlFor={`modality-${option}`} className="ml-2 text-sm text-gray-300">
                       {option}
                     </label>
                   </div>
@@ -325,7 +325,7 @@ export default function ModelsPage() {
 
             {/* Context length slider */}
             <div className="mb-8">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Context Length</h3>
+              <h3 className="text-sm font-medium text-gray-300 mb-3">Context Length</h3>
               <div className="px-1 pt-2 pb-6">
                 <input
                   type="range"
@@ -338,7 +338,7 @@ export default function ModelsPage() {
                 <div className="flex justify-between mt-2 text-xs text-gray-500">
                   <span>4K</span>
                   <span>64K</span>
-                  <span>1M+</span>
+                  <span>1M</span>
                 </div>
                 <div className="mt-3 text-xs px-2 py-1 bg-indigo-50 rounded text-indigo-700 text-center">
                   {contextLengthRange < 30
@@ -352,7 +352,7 @@ export default function ModelsPage() {
 
             {/* Price range slider */}
             <div className="mb-8">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Price Range</h3>
+              <h3 className="text-sm font-medium text-gray-300 mb-3">Price Range</h3>
               <div className="px-1 pt-2 pb-6">
                 <input
                   type="range"
@@ -367,7 +367,7 @@ export default function ModelsPage() {
                   <span>$0.5</span>
                   <span>$10+</span>
                 </div>
-                <div className="mt-3 text-xs px-2 py-1 bg-green-50 rounded text-green-700 text-center">
+                <div className="mt-3 text-xs px-2 py-1 bg-green-900 rounded text-green-400 text-center">
                   {priceRange < 20
                     ? "Free models only"
                     : priceRange < 60
@@ -379,7 +379,7 @@ export default function ModelsPage() {
 
             {/* Series */}
             <div className="mb-8">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Model Series</h3>
+              <h3 className="text-sm font-medium text-gray-300 mb-3">Model Series</h3>
               <div className="space-y-1">
                 <div className="flex items-center">
                   <input
@@ -423,7 +423,7 @@ export default function ModelsPage() {
             {/* Categories with cleaner design */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-700">Categories</h3>
+                <h3 className="text-sm font-medium text-gray-300">Categories</h3>
                 <button className="text-xs text-indigo-600 hover:text-indigo-800">
                   See all
                 </button>
@@ -449,7 +449,7 @@ export default function ModelsPage() {
             {/* Parameters */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-700">Supported Parameters</h3>
+                <h3 className="text-sm font-medium text-gray-300">Supported Parameters</h3>
                 <button className="text-xs text-indigo-600 hover:text-indigo-800">
                   See all
                 </button>
@@ -475,7 +475,7 @@ export default function ModelsPage() {
             {/* Providers */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-700">Providers</h3>
+                <h3 className="text-sm font-medium text-gray-300">Providers</h3>
                 <button className="text-xs text-indigo-600 hover:text-indigo-800">
                   See all
                 </button>
@@ -501,16 +501,15 @@ export default function ModelsPage() {
             {/* Clear All Filters button */}
             <button
               onClick={resetFilters}
-              className="w-full py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="w-full py-2 px-4 border border-gray-700 rounded-md text-sm font-medium text-gray-300 bg-[#181818] hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
             >
               Clear All Filters
             </button>
           </div>
-
-          {/* Main Content - Updated with left padding for separation */}
+          {/* Main Content */}
           <div className="flex-1 pl-8">
             <div className="mb-6">
-              <h1 className="text-2xl font-semibold">Models</h1>
+              <h1 className="text-2xl font-semibold text-white">Models</h1>
               <div className="flex justify-between items-center mt-4">
                 <div className="text-sm text-gray-500">
                   {filteredModels.length === models.length
@@ -520,7 +519,7 @@ export default function ModelsPage() {
                 <div className="flex space-x-2">
                   <button
                     onClick={() => setViewMode("table")}
-                    className={`p-1.5 rounded ${viewMode === "table" ? "bg-gray-100" : ""}`}
+                    className={`p-1.5 rounded ${viewMode === "table" ? "bg-gray-900" : ""}`}
                   >
                     <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -528,7 +527,7 @@ export default function ModelsPage() {
                   </button>
                   <button
                     onClick={() => setViewMode("grid")}
-                    className={`p-1.5 rounded ${viewMode === "grid" ? "bg-gray-100" : ""}`}
+                    className={`p-1.5 rounded ${viewMode === "grid" ? "bg-gray-900" : ""}`}
                   >
                     <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
@@ -542,11 +541,11 @@ export default function ModelsPage() {
                   <input
                     type="text"
                     placeholder="Filter models"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-md py-2 px-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all duration-200"
+                    className="w-full bg-[#181818] border border-gray-800 rounded-md py-2 px-4 pr-10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
                     value={filterText}
                     onChange={(e) => setFilterText(e.target.value)}
                   />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
@@ -662,61 +661,56 @@ export default function ModelsPage() {
             </div>
 
             {viewMode === "table" ? (
-              <div className="overflow-x-auto border border-gray-100 rounded-lg shadow-sm">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto border border-gray-800 rounded-lg shadow-sm">
+                <table className="min-w-full divide-y divide-gray-800">
+                  <thead className="bg-[#181818]">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">
                         Model Name & ID
                       </th>
-                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">
                         Input ($/1M tokens)
                       </th>
-                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">
                         Output ($/1M tokens)
                       </th>
-                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">
                         Context (tokens)
                       </th>
-                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">
                         Series
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-[#181818] divide-y divide-gray-800">
                     {filteredModels.map((model) => (
-                      <tr key={model.id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={model.id} className="hover:bg-[#222] transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-start">
                             <div>
                               <div className="flex items-center">
-                                <Link href={`/models/${model.id}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
+                                <Link href={`/models/${model.id}`} className="text-sm font-medium text-green-500 hover:text-green-400 transition-colors">
                                   {model.name}
                                 </Link>
                                 {model.isFree && (
-                                  <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium">Free</span>
+                                  <span className="ml-2 text-xs bg-green-900 text-green-400 px-2 py-0.5 rounded-full font-medium">Free</span>
                                 )}
                               </div>
                               <div className="text-xs text-gray-500 font-mono mt-1">{model.modelId}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 text-center">
                           ${model.inputCost.toFixed(2)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 text-center">
                           ${model.outputCost.toFixed(2)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 text-center">
                           {model.context.toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full font-medium ${model.series === 'Gemini' ? 'bg-indigo-50 text-indigo-700' :
-                              model.series === 'Claude' ? 'bg-blue-50 text-blue-700' :
-                                'bg-pink-50 text-pink-700'
-                              }`}
-                          >
+                          <span className="text-xs px-2 py-1 rounded-full font-medium bg-green-900 text-green-400">
                             {model.series}
                           </span>
                         </td>
@@ -728,65 +722,65 @@ export default function ModelsPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {filteredModels.map((model) => (
-                  <div key={model.id} className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow duration-300 bg-white relative overflow-hidden">
+                  <div
+                    key={model.id}
+                    className="border border-gray-800 rounded-lg p-5 hover:shadow-lg hover:border-green-500 transition-shadow duration-300 bg-[#181818] relative overflow-hidden"
+                  >
                     {/* Top colored accent bar based on model series */}
                     <div
-                      className={`absolute top-0 left-0 right-0 h-1 ${model.series === 'Gemini' ? 'bg-indigo-500' :
-                        model.series === 'Claude' ? 'bg-blue-500' :
-                          'bg-pink-500'
+                      className={`absolute top-0 left-0 right-0 h-1 ${model.series === 'Gemini'
+                          ? 'bg-green-500'
+                          : model.series === 'Claude'
+                            ? 'bg-green-700'
+                            : 'bg-green-900'
                         }`}
                     ></div>
 
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <Link href={`/models/${model.id}`} className="font-medium text-indigo-600 text-base hover:text-indigo-700 transition-colors">
+                        <Link href={`/models/${model.id}`} className="font-medium text-green-500 text-base hover:text-green-400 transition-colors">
                           {model.name}
                         </Link>
                         <p className="text-xs text-gray-500 font-mono mt-1">{model.modelId}</p>
                       </div>
                       <div className="flex space-x-2">
                         {model.isFree && (
-                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">Free</span>
+                          <span className="text-xs bg-green-900 text-green-400 px-2 py-1 rounded-full font-medium">Free</span>
                         )}
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full font-medium ${model.series === 'Gemini' ? 'bg-indigo-50 text-indigo-700' :
-                            model.series === 'Claude' ? 'bg-blue-50 text-blue-700' :
-                              'bg-pink-50 text-pink-700'
-                            }`}
-                        >
+                        <span className="text-xs px-2 py-1 rounded-full font-medium bg-green-900 text-green-400">
                           {model.series}
                         </span>
                       </div>
                     </div>
 
-                    <p className="mt-3 text-sm text-gray-600 line-clamp-2 overflow-hidden text-ellipsis min-h-[40px]">
+                    <p className="mt-3 text-sm text-gray-400 line-clamp-2 overflow-hidden text-ellipsis min-h-[40px]">
                       {model.description}
                     </p>
 
-                    <div className="mt-4 pt-3 border-t border-gray-100 grid grid-cols-3 gap-4 text-xs">
+                    <div className="mt-4 pt-3 border-t border-gray-800 grid grid-cols-3 gap-4 text-xs">
                       <div className="flex flex-col">
                         <div className="text-gray-500 mb-1">Input</div>
-                        <div className="font-medium">${model.inputCost.toFixed(2)}/1M</div>
+                        <div className="font-medium text-gray-200">${model.inputCost.toFixed(2)}/1M</div>
                       </div>
                       <div className="flex flex-col">
                         <div className="text-gray-500 mb-1">Output</div>
-                        <div className="font-medium">${model.outputCost.toFixed(2)}/1M</div>
+                        <div className="font-medium text-gray-200">${model.outputCost.toFixed(2)}/1M</div>
                       </div>
                       <div className="flex flex-col">
                         <div className="text-gray-500 mb-1">Context</div>
-                        <div className="font-medium">{(model.context / 1000)}K</div>
+                        <div className="font-medium text-gray-200">{(model.context / 1000)}K</div>
                       </div>
                     </div>
 
                     <div className="mt-4 flex justify-between items-center">
                       <div className="flex flex-wrap gap-1">
                         {model.categories.map(category => (
-                          <span key={category} className="inline-block text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
+                          <span key={category} className="inline-block text-[10px] px-2 py-0.5 bg-[#222] text-gray-400 rounded-full">
                             {category}
                           </span>
                         ))}
                       </div>
-                      <Link href={`/models/${model.id}`} className="text-xs px-3 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors rounded-md font-medium">
+                      <Link href={`/models/${model.id}`} className="text-xs px-3 py-1 bg-green-900 text-green-400 hover:bg-green-800 transition-colors rounded-md font-medium">
                         View details
                       </Link>
                     </div>
@@ -799,4 +793,4 @@ export default function ModelsPage() {
       </div>
     </main>
   );
-} 
+}

@@ -25,11 +25,71 @@
 */
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  background: #111 !important;
+  color: #fff !important;
+}
+
+.bg-white,
+.bg-gray-50,
+.bg-blue-50,
+.bg-indigo-50,
+.bg-green-100,
+.bg-blue-100,
+.bg-pink-50,
+.bg-amber-50,
+.bg-purple-50 {
+  background-color: #181818 !important;
+}
+
+.text-gray-900,
+.text-gray-800,
+.text-gray-700,
+.text-gray-600,
+.text-blue-800,
+.text-indigo-700,
+.text-indigo-600,
+.text-blue-700,
+.text-pink-700,
+.text-amber-700,
+.text-purple-700 {
+  color: #fff !important;
+}
+
+.border-gray-100,
+.border-gray-200,
+.border-gray-300 {
+  border-color: #222 !important;
+}
+
+.bg-indigo-600,
+.bg-indigo-700,
+.bg-blue-500,
+.bg-green-500 {
+  background-color: #22c55e !important;
+}
+
+.text-indigo-600,
+.text-indigo-700,
+.text-blue-700,
+.text-green-500 {
+  color: #22c55e !important;
+}
+
+a {
+  color: #22c55e !important;
+}
+
+input,
+textarea,
+select {
+  background: #222 !important;
+  color: #fff !important;
+  border-color: #333 !important;
+}
+
+button {
+  background: #22c55e !important;
+  color: #fff !important;
 }
 
 /* Custom styles for the curved connection lines */
@@ -50,8 +110,13 @@ body {
 
 /* Custom animations */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .animate-fadeIn {
@@ -65,4 +130,20 @@ body {
 
 .card-shadow:hover {
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+::-webkit-input-placeholder {
+  color: #aaa;
+}
+
+::-moz-placeholder {
+  color: #aaa;
+}
+
+:-ms-input-placeholder {
+  color: #aaa;
+}
+
+::placeholder {
+  color: #aaa;
 }
