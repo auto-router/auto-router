@@ -82,7 +82,7 @@ const NavBar = () => {
 
                         <div className="flex items-center space-x-6">
                             <Link href="/models" className="text-green-500 hover:text-green-400 hover:underline-offset-4 hover:underline text-sm transition-all duration-200">Models</Link>
-                            <Link href="#chat" className="text-green-500 hover:text-green-400 hover:underline-offset-4 hover:underline text-sm transition-all duration-200">Chat</Link>
+                            <Link href="/chat" className="text-green-500 hover:text-green-400 hover:underline-offset-4 hover:underline text-sm transition-all duration-200">Chat</Link>
                             <Link href="#rankings" className="text-green-500 hover:text-green-400 hover:underline-offset-4 hover:underline text-sm transition-all duration-200">Rankings</Link>
                             <Link href="#docs" className="text-green-500 hover:text-green-400 hover:underline-offset-4 hover:underline text-sm transition-all duration-200">Docs</Link>
                         </div>
