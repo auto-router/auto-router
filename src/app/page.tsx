@@ -4,6 +4,7 @@ import UnifiedLLMInterface from "@/components/routerAnimation";
 import FeaturedModels from "../components/FeaturedModels";
 import SavingsVisualizer from "../components/SavingsVisualizer";
 import StatsSection from "../components/StatsSection";
+import Link from "next/link";
 
 
 export default function Home() {

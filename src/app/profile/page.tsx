@@ -6,10 +6,16 @@ import { authService } from "@/lib/auth";
 import { useAuth } from "@/context/AuthContext";
 
 interface UserProfile {
-  username: string;
-  firstname: string;
-  lastname: string;
-  email: string;
+  id?: string;
+  google_id?: string;
+  username?: string;
+  firstname?: string;
+  lastname?: string;
+  email?: string;
+  password_hash?: string;
+  is_email_verified?: boolean;
+  auth_provider?: string;
+  avatar_url?: string;
 }
 
 export default function ProfilePage() {
@@ -73,7 +79,32 @@ export default function ProfilePage() {
         <div className="bg-[#181818] shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">Profile</h2>
+              <div className="flex items-center gap-4">
+                {(profile?.avatar_url && profile.avatar_url !== "" && profile.avatar_url !== "null") ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt="Avatar"
+                    className="w-14 h-14 rounded-full border-2 border-green-500 object-cover bg-[#222]"
+                    onError={e => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                      // Optionally, you could set a fallback state here to show initials if image fails
+                    }}
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-green-700 flex items-center justify-center text-2xl font-bold text-white border-2 border-green-500">
+                    {(profile?.firstname?.[0] || profile?.username?.[0] || profile?.email?.[0] || "U").toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <h2 className="text-2xl font-bold text-white">{profile?.firstname} {profile?.lastname}</h2>
+                  <div className="text-sm text-gray-400">{profile?.email}</div>
+                  {profile?.is_email_verified ? (
+                    <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-green-700 text-green-200 rounded-full">Email Verified</span>
+                  ) : (
+                    <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-yellow-700 text-yellow-200 rounded-full">Email Not Verified</span>
+                  )}
+                </div>
+              </div>
               <button
                 onClick={handleLogout}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
@@ -87,7 +118,22 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-300">Username</label>
-                    <div className="mt-1 text-sm text-gray-100">{profile.username}</div>
+                    {profile.username ? (
+                      <div className="mt-1 text-sm text-gray-100">{profile.username}</div>
+                    ) : (
+                      <input
+                        type="text"
+                        className="mt-1 w-full px-3 py-2 rounded-md bg-[#222] border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                        placeholder="Enter username"
+                        onBlur={async (e) => {
+                          const value = e.target.value.trim();
+                          if (value) {
+                            // Save logic here (API call)
+                            setProfile({ ...profile, username: value });
+                          }
+                        }}
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-300">Email</label>
@@ -98,11 +144,39 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-300">First Name</label>
-                    <div className="mt-1 text-sm text-gray-100">{profile.firstname}</div>
+                    {profile.firstname ? (
+                      <div className="mt-1 text-sm text-gray-100">{profile.firstname}</div>
+                    ) : (
+                      <input
+                        type="text"
+                        className="mt-1 w-full px-3 py-2 rounded-md bg-[#222] border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                        placeholder="Enter first name"
+                        onBlur={async (e) => {
+                          const value = e.target.value.trim();
+                          if (value) {
+                            setProfile({ ...profile, firstname: value });
+                          }
+                        }}
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-300">Last Name</label>
-                    <div className="mt-1 text-sm text-gray-100">{profile.lastname}</div>
+                    {profile.lastname ? (
+                      <div className="mt-1 text-sm text-gray-100">{profile.lastname}</div>
+                    ) : (
+                      <input
+                        type="text"
+                        className="mt-1 w-full px-3 py-2 rounded-md bg-[#222] border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                        placeholder="Enter last name"
+                        onBlur={async (e) => {
+                          const value = e.target.value.trim();
+                          if (value) {
+                            setProfile({ ...profile, lastname: value });
+                          }
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
 
