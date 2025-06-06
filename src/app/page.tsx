@@ -4,11 +4,23 @@ import UnifiedLLMInterface from "@/components/routerAnimation";
 import FeaturedModels from "../components/FeaturedModels";
 import SavingsVisualizer from "../components/SavingsVisualizer";
 import StatsSection from "../components/StatsSection";
-import TopApps from "../components/TopApps";
+
 
 export default function Home() {
   return (
     <div className="w-full flex flex-col items-center bg-black min-h-screen">
+      {/* Moving Banner with Gradient */}
+      <div className="w-full relative overflow-hidden h-10 flex items-center justify-center">
+        <div className="absolute inset-0 z-0 pointer-events-none"
+          style={{
+            background: "linear-gradient(90deg, #22d3ee 0%, #22c55e 50%, #facc15 100%)",
+            opacity: 0.7 // Increase opacity for a lighter look
+          }}
+        />
+        <div className="relative z-10 whitespace-nowrap animate-marquee text-black font-semibold text-sm px-4 text-center">
+          🚀 $5 free credit for auto-routing &mdash; sign up free, no credit card required!
+        </div>
+      </div>
       {/* Hero Section */}
       <div className="w-full bg-black pt-16 pb-20">
         <div className="w-full max-w-4xl mx-auto px-4">
@@ -66,20 +78,22 @@ export default function Home() {
         </div>
 
         {/* Cost Comparison Section */}
-        <div className="py-10 bg-gray-50 rounded-xl mb-12 mt-30">
-          <h2 className="text-xl font-medium text-center text-gray-900 mb-2">See Your Savings</h2>
-          <p className="text-center text-gray-500 mb-8 max-w-xl mx-auto">Compare your current AI costs with Auto-Router</p>
-          <SavingsVisualizer />
-        </div>
-
-        {/* Top Apps Section */}
-        <div className="mb-12">
-          <h2 className="text-xl font-medium text-gray-900 mb-2 text-center">Top Apps Using Auto-Router</h2>
-          <TopApps />
+        <div className="mb-50 mt-50">
+          <div className="mb-6 flex flex-col items-center">
+            <h2 className="text-xl font-medium text-center text-white mb-2">See Your Savings</h2>
+            <p className="text-center text-gray-400 mb-8 max-w-xl mx-auto">Compare your current AI costs with Auto-Router</p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-6">
+            <div className="w-full max-w-2xl mx-auto">
+              <div className="bg-black rounded-2xl p-8 shadow-lg">
+                <SavingsVisualizer />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Stats Section */}
-        <div className="mb-12">
+        <div className="mb-50">
           <StatsSection />
         </div>
       </div>
