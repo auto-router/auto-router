@@ -15,13 +15,33 @@ const NavBar = () => {
 
     useEffect(() => {
         setMounted(true);
-        // Fetch user info if authenticated
+        // Fetch user info if authenticated, from cache first if available
         if (isAuthenticated) {
-            authService.getCurrentUser()
-                .then(u => setUser(u))
-                .catch(() => setUser(null));
+            // Try to get user from localStorage first
+            const cachedUser = localStorage.getItem('user_data');
+            if (cachedUser) {
+                try {
+                    setUser(JSON.parse(cachedUser));
+                } catch (e) {
+                    console.error('Error parsing cached user data:', e);
+                }
+            }
+
+            // Only fetch from server if we don't have cached data or if it's older than a certain time
+            // You could add timestamp checks for more sophisticated caching
+            if (!cachedUser) {
+                authService.getCurrentUser()
+                    .then(userData => {
+                        setUser(userData);
+                        // Cache the user data
+                        localStorage.setItem('user_data', JSON.stringify(userData));
+                    })
+                    .catch(() => setUser(null));
+            }
         } else {
             setUser(null);
+            // Clear cached user when logged out
+            localStorage.removeItem('user_data');
         }
     }, [isAuthenticated]);
 

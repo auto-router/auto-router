@@ -15,6 +15,8 @@ export interface RegisterCredentials {
 
 export interface AuthResponse {
   access_token: string;
+  refresh_token: string;
+  user_id: string;
 }
 
 export interface UserProfile {
@@ -22,6 +24,7 @@ export interface UserProfile {
   firstname: string;
   lastname: string;
   email: string;
+  id?: string;
 }
 
 export class AuthError extends Error {
@@ -33,18 +36,50 @@ export class AuthError extends Error {
 
 class AuthService {
   private token: string | null = null;
+  private refreshToken: string | null = null;
+  private userId: string | null = null;
 
   constructor() {
-    // Initialize token from localStorage if available
     if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('auth_token');
+      this.loadTokens();
     }
   }
 
-  private async request<T>(
+  // Centralized token management
+  private loadTokens(): void {
+    this.token = localStorage.getItem('auth_token');
+    this.refreshToken = localStorage.getItem('refresh_token');
+    this.userId = localStorage.getItem('user_id');
+  }
+
+  private saveTokens(tokens: AuthResponse): void {
+    this.token = tokens.access_token;
+    this.refreshToken = tokens.refresh_token;
+    this.userId = tokens.user_id;
+
+    localStorage.setItem('auth_token', tokens.access_token);
+    localStorage.setItem('refresh_token', tokens.refresh_token);
+    localStorage.setItem('user_id', tokens.user_id);
+  }
+
+  private clearTokens(): void {
+    this.token = null;
+    this.refreshToken = null;
+    this.userId = null;
+
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('user_data');
+    localStorage.removeItem('user_data_timestamp');
+  }
+
+  // Simple fetch wrapper without generics
+  private async fetchWithAuth(
     endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+    options: RequestInit = {},
+    retryWithRefresh = true
+  ): Promise<any> {
     const headers = new Headers({
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string> || {}),
@@ -55,22 +90,21 @@ class AuthService {
     }
 
     const url = `${API_BASE_URL}${endpoint}`;
-    console.log('Making request to:', url);
-    console.log('Request options:', {
-      method: options.method,
-      headers: Object.fromEntries(headers.entries()),
-      body: options.body ? JSON.parse(options.body as string) : undefined
-    });
 
     try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
-
-      console.log('Response status:', response.status);
+      const response = await fetch(url, { ...options, headers });
       const responseData = await response.json().catch(() => ({}));
-      console.log('Response data:', responseData);
+
+      // Handle expired token
+      if (response.status === 401 && retryWithRefresh && this.refreshToken) {
+        try {
+          await this.refreshAccessToken();
+          return this.fetchWithAuth(endpoint, options, false); // prevent infinite refresh loops
+        } catch (error) {
+          this.clearTokens();
+          throw new AuthError('Session expired. Please login again.', 401);
+        }
+      }
 
       if (!response.ok) {
         throw new AuthError(
@@ -81,81 +115,115 @@ class AuthService {
 
       return responseData;
     } catch (error) {
-      console.error('Request failed:', error);
-      if (error instanceof AuthError) {
-        throw error;
-      }
+      if (error instanceof AuthError) throw error;
       throw new AuthError('Network error occurred');
     }
   }
 
+  // Specific endpoint methods instead of generic request
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    console.log('Attempting login with:', { email: credentials.email });
-    const response = await this.request<AuthResponse>('/login', {
+    const response = await this.fetchWithAuth('/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
 
-    console.log('Login response:', response);
-
     if (response.access_token) {
-      this.token = response.access_token;
-      localStorage.setItem('auth_token', response.access_token);
-      console.log('Token stored successfully');
-    } else {
-      console.warn('No access token in response');
+      this.saveTokens(response);
     }
 
     return response;
   }
 
   async register(credentials: RegisterCredentials): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>('/register', {
+    const response = await this.fetchWithAuth('/register', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
 
     if (response.access_token) {
-      this.token = response.access_token;
-      localStorage.setItem('auth_token', response.access_token);
+      this.saveTokens(response);
     }
 
     return response;
   }
 
   async googleAuth(): Promise<void> {
-    // Redirect to Google OAuth endpoint
     window.location.href = `${API_BASE_URL}/auth/google`;
   }
 
   async logout(): Promise<void> {
     try {
-      await this.request('/logout', {
-        method: 'POST',
-      });
+      if (this.refreshToken) {
+        await this.fetchWithAuth('/logout', {
+          method: 'POST',
+          body: JSON.stringify({ refresh_token: this.refreshToken }),
+        });
+      }
     } finally {
-      this.token = null;
-      localStorage.removeItem('auth_token');
+      this.clearTokens();
     }
   }
 
-  async refreshToken(): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>('/refresh', {
-      method: 'POST',
-    });
-
-    if (response.access_token) {
-      this.token = response.access_token;
-      localStorage.setItem('auth_token', response.access_token);
+  async refreshAccessToken(): Promise<void> {
+    if (!this.refreshToken) {
+      this.clearTokens();
+      throw new AuthError('No refresh token available');
     }
 
-    return response;
+    try {
+      const response = await fetch(`${API_BASE_URL}/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: this.refreshToken }),
+      });
+
+      if (!response.ok) {
+        this.clearTokens();
+        throw new AuthError('Failed to refresh token', response.status);
+      }
+
+      const data = await response.json();
+
+      if (data.access_token) {
+        this.token = data.access_token;
+        localStorage.setItem('auth_token', data.access_token);
+
+        if (data.refresh_token) {
+          this.refreshToken = data.refresh_token;
+          localStorage.setItem('refresh_token', data.refresh_token);
+        }
+      } else {
+        this.clearTokens();
+        throw new AuthError('Invalid refresh response');
+      }
+    } catch (error) {
+      this.clearTokens();
+      throw error;
+    }
   }
 
   async getCurrentUser(): Promise<UserProfile> {
-    return this.request<UserProfile>('/me');
+    const cachedUser = localStorage.getItem('user_data');
+    const cachedTimestamp = localStorage.getItem('user_data_timestamp');
+
+    if (cachedUser && cachedTimestamp) {
+      const MAX_CACHE_AGE = 60 * 60 * 1000; // 1 hour
+      const cacheAge = Date.now() - parseInt(cachedTimestamp);
+
+      if (cacheAge < MAX_CACHE_AGE) {
+        return JSON.parse(cachedUser);
+      }
+    }
+
+    const userData = await this.fetchWithAuth('/me');
+
+    localStorage.setItem('user_data', JSON.stringify(userData));
+    localStorage.setItem('user_data_timestamp', Date.now().toString());
+
+    return userData;
   }
 
+  // Simple helper methods
   isAuthenticated(): boolean {
     return !!this.token;
   }
@@ -163,6 +231,14 @@ class AuthService {
   getToken(): string | null {
     return this.token;
   }
+
+  getUserId(): string | null {
+    return this.userId;
+  }
+
+  getRefreshToken(): string | null {
+    return this.refreshToken;
+  }
 }
 
-export const authService = new AuthService(); 
+export const authService = new AuthService();

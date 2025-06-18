@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Listen for storage changes (cross-tab sync)
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === "auth_token") {
+      if (e.key === "auth_token" || e.key === "refresh_token" || e.key === "user_id") {
         setIsAuthenticated(authService.isAuthenticated());
       }
     };

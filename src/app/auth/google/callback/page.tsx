@@ -11,9 +11,18 @@ export default function GoogleCallbackPage() {
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const token = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
+        const userId = params.get("user_id");
+
         if (token) {
+            // Store all authentication data
             localStorage.setItem("auth_token", token);
-            authService.getToken = () => token; // Optionally update token in service
+            if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
+            if (userId) localStorage.setItem("user_id", userId);
+
+            // Update auth service with new token
+            authService.getToken = () => token;
+
             setAuthenticated(true);
             refreshAuthState();
             router.replace("/");
