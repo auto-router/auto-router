@@ -1,8 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { authService } from "@/lib/auth";
-import { useAuth } from "@/context/AuthContext";
+import { authService, useAuth } from "@/context/AuthContext";
 
 export default function GoogleCallbackPage() {
     const router = useRouter();
@@ -20,8 +19,13 @@ export default function GoogleCallbackPage() {
             if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
             if (userId) localStorage.setItem("user_id", userId);
 
-            // Update auth service with new token
-            authService.getToken = () => token;
+            // Update authService tokens in memory
+            // @ts-ignore
+            authService.token = token;
+            // @ts-ignore
+            if (refreshToken) authService.refreshToken = refreshToken;
+            // @ts-ignore
+            if (userId) authService.userId = userId;
 
             setAuthenticated(true);
             refreshAuthState();
@@ -36,3 +40,4 @@ export default function GoogleCallbackPage() {
 
     return <div>Signing you in...</div>;
 }
+

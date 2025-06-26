@@ -3,8 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { authService } from "@/lib/auth";
-import { useAuth } from "@/context/AuthContext";
+import { authService, useAuth } from "@/context/AuthContext";
 
 const NavBar = () => {
     const { isAuthenticated } = useAuth();

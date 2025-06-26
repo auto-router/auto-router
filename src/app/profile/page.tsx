@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { authService } from "@/lib/auth";
-import { useAuth } from "@/context/AuthContext";
+import { authService, useAuth } from "@/context/AuthContext";
 
 interface UserProfile {
   id?: string;
