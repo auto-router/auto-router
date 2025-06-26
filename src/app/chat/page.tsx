@@ -1,9 +1,18 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import ModelSelectionDialog from '@/components/ModelSelectionDialog';
 
-// Mock LLMs
-const LLM_MODELS = [
+interface Model {
+    id: string;
+    name: string;
+    provider: string;
+    isNew?: boolean;
+    isActive?: boolean; // Track if model is active
+}
+
+// Update the LLM_MODELS interface to match our Model interface
+const LLM_MODELS: Model[] = [
     { id: "gpt-4", name: "GPT-4", provider: "OpenAI" },
     { id: "claude-3", name: "Claude 3", provider: "Anthropic" },
     { id: "gemini-1.5", name: "Gemini 1.5", provider: "Google" },
@@ -21,13 +30,17 @@ const MODEL_COSTS: Record<string, number> = {
     "openrouter": 0.007,
 };
 
+// Add a default cost for unknown models
+const DEFAULT_MODEL_COST = 0.01;
+
 function getRandomResponse(model: string, message: string) {
     return `(${model}) Response: "${message.slice(0, 40)}..."`;
 }
 
 export default function ChatPage() {
-    const [selectedLLMs, setSelectedLLMs] = useState<string[]>(["gpt-4"]);
+    const [selectedModels, setSelectedModels] = useState<Model[]>([{ ...LLM_MODELS[0], isActive: true }]);
     const [useOpenRouter, setUseOpenRouter] = useState(true);
+    const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
     const [input, setInput] = useState("");
     const [messages, setMessages] = useState<{ user: string; responses: { [model: string]: string } }[]>([]);
     const [costHistory, setCostHistory] = useState<{ saved: number; spent: number }[]>([]);
@@ -47,54 +60,64 @@ export default function ChatPage() {
 
     // Limit selection to 3 models for smart routing
     const handleLLMChange = (id: string) => {
-        setSelectedLLMs((prev) => {
-            if (prev.includes(id)) {
-                return prev.filter((m) => m !== id);
+        setSelectedModels(prev => {
+            if (prev.some(m => m.id === id)) {
+                return prev.filter((m) => m.id !== id);
             }
             if (useOpenRouter && prev.length >= 3) {
                 return prev;
             }
-            return [...prev, id];
+            const modelToAdd = LLM_MODELS.find(m => m.id === id);
+            return modelToAdd ? [...prev, modelToAdd] : prev;
         });
     };
 
     const handleSend = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim() || selectedLLMs.length === 0) return;
+        if (!input.trim() || selectedModels.length === 0) return;
 
         let responses: { [model: string]: string } = {};
         let spent = 0;
         let saved = 0;
 
-        // Show typing animation for random model if auto-router is enabled
-        const randomModelIndex = Math.floor(Math.random() * selectedLLMs.length);
-        const randomModel = selectedLLMs[randomModelIndex];
-        setActiveModel(useOpenRouter ? randomModel : selectedLLMs[0]);
+        // Show typing animation
+        if (useOpenRouter) {
+            // Smart routing - pick a random model for demonstration
+            const randomModelIndex = Math.floor(Math.random() * selectedModels.length);
+            const randomModel = selectedModels[randomModelIndex].id;
+            setActiveModel(randomModel);
+        } else {
+            // Use only the active model when smart routing is disabled
+            const activeModelObj = selectedModels.find(m => m.isActive);
+            setActiveModel(activeModelObj ? activeModelObj.id : null);
+        }
 
         // Simulate response delay 
         setTimeout(() => {
             if (useOpenRouter) {
                 // Smart routing simulation - choose best model for the input based on content
-                // This simulates the auto-router analyzing the input and selecting the appropriate model
-                const bestModelIndex = Math.floor(Math.random() * selectedLLMs.length);
-                const bestModel = selectedLLMs[bestModelIndex];
+                const bestModelIndex = Math.floor(Math.random() * selectedModels.length);
+                const bestModel = selectedModels[bestModelIndex].id;
 
                 responses[bestModel] = getRandomResponse(bestModel, input);
                 spent += MODEL_COSTS["openrouter"];
-                saved += Math.max(0, MODEL_COSTS[bestModel] - MODEL_COSTS["openrouter"]);
+                saved += Math.max(0, (MODEL_COSTS[bestModel] || DEFAULT_MODEL_COST) - MODEL_COSTS["openrouter"]);
 
                 setActiveModel(null);
                 setMessages((prev) => [...prev, { user: input, responses }]);
                 setCostHistory((prev) => [...prev, { saved, spent }]);
             } else {
-                selectedLLMs.forEach((model) => {
-                    responses[model] = getRandomResponse(model, input);
-                    spent += MODEL_COSTS[model];
-                });
+                // Only use the active model when smart routing is disabled
+                const activeModelObj = selectedModels.find(m => m.isActive);
 
-                setActiveModel(null);
-                setMessages((prev) => [...prev, { user: input, responses }]);
-                setCostHistory((prev) => [...prev, { saved, spent }]);
+                if (activeModelObj) {
+                    responses[activeModelObj.id] = getRandomResponse(activeModelObj.id, input);
+                    spent += MODEL_COSTS[activeModelObj.id] || DEFAULT_MODEL_COST;
+
+                    setActiveModel(null);
+                    setMessages((prev) => [...prev, { user: input, responses }]);
+                    setCostHistory((prev) => [...prev, { saved, spent }]);
+                }
             }
         }, 800);
 
@@ -104,6 +127,74 @@ export default function ChatPage() {
     // Minimal analytics
     const totalSpent = costHistory.reduce((sum, c) => sum + c.spent, 0);
     const totalSaved = costHistory.reduce((sum, c) => sum + c.saved, 0);
+
+    // Convert selectedModels to selectedLLMs for compatibility with existing code
+    const selectedLLMs = selectedModels.map(model => model.id);
+
+    const handleAddModel = (model: Model) => {
+        // First check if we need to add this model to the costs dictionary
+        if (model.id && MODEL_COSTS[model.id] === undefined) {
+            MODEL_COSTS[model.id] = DEFAULT_MODEL_COST; // Set default cost for new models
+        }
+
+        setSelectedModels(prev => {
+            // Check if model already exists
+            if (prev.some(m => m.id === model.id)) return prev;
+
+            // Add new model to the list
+            // If smart routing is disabled and it's the first model, or no models are active,
+            // make it active by default
+            const shouldBeActive = !useOpenRouter && (prev.length === 0 || !prev.some(m => m.isActive));
+            return [...prev, { ...model, isActive: shouldBeActive }];
+        });
+    };
+
+    const handleRemoveModel = (modelId: string) => {
+        setSelectedModels(prev => {
+            const newModels = prev.filter(model => model.id !== modelId);
+
+            // If we're removing the active model and smart routing is disabled,
+            // we need to activate another model if available
+            if (!useOpenRouter && prev.find(m => m.id === modelId)?.isActive && newModels.length > 0) {
+                newModels[0].isActive = true;
+            }
+
+            return newModels;
+        });
+    };
+
+    // Toggle model activation (used for non-smart routing mode)
+    const handleToggleModelActive = (modelId: string) => {
+        if (useOpenRouter) return; // No need to toggle if smart routing is on
+
+        setSelectedModels(prev => {
+            return prev.map(model => ({
+                ...model,
+                isActive: model.id === modelId // Only the clicked model should be active
+            }));
+        });
+    };
+
+    // Handle smart routing toggle
+    const toggleSmartRouting = () => {
+        setUseOpenRouter(prev => {
+            const newValue = !prev;
+
+            // If turning off smart routing, ensure only one model is active
+            if (!newValue && selectedModels.length > 0) {
+                setSelectedModels(models => {
+                    const updated = [...models];
+                    // Set only the first model as active
+                    updated.forEach((model, index) => {
+                        model.isActive = index === 0;
+                    });
+                    return updated;
+                });
+            }
+
+            return newValue;
+        });
+    };
 
     return (
         <div className="flex max-h-[85vh] h-[700px] bg-white dark:bg-[#0a0a0a] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
@@ -118,49 +209,87 @@ export default function ChatPage() {
                 <div className="flex-1 overflow-y-auto p-2">
                     <div className="mb-3">
                         <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Models</h3>
+                            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Models Tray</h3>
                             <div className="text-xs bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-400">
-                                {selectedLLMs.length} selected
+                                {selectedModels.length} selected
                             </div>
                         </div>
 
-                        <div className="space-y-1">
-                            {LLM_MODELS.map((model) => {
-                                const isSelected = selectedLLMs.includes(model.id);
-                                const disabled = useOpenRouter && !isSelected && selectedLLMs.length >= 3;
-                                const isActive = useOpenRouter && activeModel === model.id;
+                        {/* Add Model Button */}
+                        <button
+                            onClick={() => setIsModelDialogOpen(true)}
+                            className="w-full mb-3 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+                        >
+                            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            Add Models
+                        </button>
+
+                        {/* Model Selection Dialog */}
+                        <ModelSelectionDialog
+                            isOpen={isModelDialogOpen}
+                            onClose={() => setIsModelDialogOpen(false)}
+                            onAddModel={handleAddModel}
+                            selectedModelIds={selectedLLMs}
+                        />
+
+                        <div className="space-y-1.5">
+                            {selectedModels.map((model) => {
+                                const isTyping = activeModel === model.id;
+                                const isActive = useOpenRouter || model.isActive;
 
                                 return (
                                     <div
                                         key={model.id}
-                                        className={`p-2 rounded-lg border flex items-center justify-between cursor-pointer transition-colors
-											${isSelected
-                                                ? "border-green-400 bg-green-50 dark:bg-green-900/10"
-                                                : "border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800/40"}
-											${disabled ? "opacity-40 cursor-not-allowed" : ""}
-											${isActive ? "ring-2 ring-green-400" : ""}
-										`}
-                                        onClick={() => !disabled && handleLLMChange(model.id)}
+                                        className={`p-2.5 rounded-lg border flex items-center justify-between transition-all
+                                            ${isTyping
+                                                ? 'border-green-400 bg-green-50 dark:bg-green-900/10 shadow-sm'
+                                                : isActive
+                                                    ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/10'
+                                                    : 'border-gray-200 dark:border-gray-800'
+                                            }
+                                        `}
                                     >
                                         <div className="flex items-center">
-                                            <input
-                                                type="checkbox"
-                                                className="h-4 w-4 rounded text-green-500 focus:ring-green-500 mr-2"
-                                                checked={isSelected}
-                                                onChange={() => { }}
-                                                disabled={disabled}
-                                            />
+                                            <div
+                                                className={`w-4 h-4 mr-2 flex-shrink-0 cursor-pointer ${!useOpenRouter ? 'cursor-pointer' : ''}`}
+                                                onClick={() => handleToggleModelActive(model.id)}
+                                                title={useOpenRouter ? "Smart routing enabled" : "Click to activate"}
+                                            >
+                                                {useOpenRouter ? (
+                                                    <div className={`w-2.5 h-2.5 rounded-full ${isTyping ? 'bg-green-500 animate-pulse' : 'bg-blue-400'}`}></div>
+                                                ) : (
+                                                    <div className="relative flex items-center justify-center">
+                                                        <div className={`w-3 h-3 rounded-full border ${model.isActive ? 'border-blue-500' : 'border-gray-400'}`}></div>
+                                                        {model.isActive && <div className="absolute w-1.5 h-1.5 rounded-full bg-blue-500"></div>}
+                                                    </div>
+                                                )}
+                                            </div>
                                             <div>
                                                 <div className="text-sm font-medium text-gray-900 dark:text-gray-200">{model.name}</div>
                                                 <div className="text-xs text-gray-500 dark:text-gray-400">{model.provider}</div>
                                             </div>
                                         </div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                                            ${MODEL_COSTS[model.id].toFixed(3)}
-                                        </div>
+
+                                        <button
+                                            onClick={() => handleRemoveModel(model.id)}
+                                            className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 p-1"
+                                            title="Remove model"
+                                        >
+                                            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
                                     </div>
                                 );
                             })}
+
+                            {selectedModels.length === 0 && (
+                                <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+                                    No models selected. Click "Add Models" to begin.
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -179,18 +308,13 @@ export default function ChatPage() {
                                     type="checkbox"
                                     className="sr-only"
                                     checked={useOpenRouter}
-                                    onChange={() => {
-                                        setUseOpenRouter(v => !v);
-                                        if (!useOpenRouter && selectedLLMs.length > 3) {
-                                            setSelectedLLMs(prev => prev.slice(0, 3));
-                                        }
-                                    }}
+                                    onChange={toggleSmartRouting}
                                 />
                                 <div className={`block w-8 h-4 rounded-full transition-colors ${useOpenRouter ? "bg-green-400" : "bg-gray-300 dark:bg-gray-700"}`}></div>
                                 <div className={`absolute left-0.5 top-0.5 bg-white w-3 h-3 rounded-full transition-transform ${useOpenRouter ? "transform translate-x-4" : ""}`}></div>
                             </div>
                             <span className="text-xs text-gray-600 dark:text-gray-300">
-                                {useOpenRouter ? "Best model (max 3)" : "Use all models"}
+                                {useOpenRouter ? "Best model (max 3)" : "Use selected model"}
                             </span>
                         </label>
 
@@ -409,11 +533,11 @@ export default function ChatPage() {
                                             </div>
                                             <div className="flex items-center justify-between">
                                                 <div className="text-[10px] text-gray-500 dark:text-gray-400">
-                                                    ${MODEL_COSTS[modelId].toFixed(3)}/msg
+                                                    ${(MODEL_COSTS[modelId] || DEFAULT_MODEL_COST).toFixed(3)}/msg
                                                 </div>
                                                 {useOpenRouter && (
                                                     <div className="text-[10px] text-green-600 dark:text-green-400 font-medium">
-                                                        ${(MODEL_COSTS[modelId] - MODEL_COSTS["openrouter"]).toFixed(3)} saved
+                                                        ${((MODEL_COSTS[modelId] || DEFAULT_MODEL_COST) - MODEL_COSTS["openrouter"]).toFixed(3)} saved
                                                     </div>
                                                 )}
                                             </div>

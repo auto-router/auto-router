@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
-import { AutoSwitchProvider } from "../context/AutoSwitchContext";
+
 import { AuthProvider } from "../context/AuthContext";
 
 const inter = Inter({
@@ -23,13 +23,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="light">
       <body className={`bg-white min-h-screen flex flex-col ${inter.variable} font-sans`}>
         <AuthProvider>
-          <AutoSwitchProvider>
-            <NavBar />
-            <main className="flex-1 flex flex-col bg-white">
-              {children}
-            </main>
-            <Footer />
-          </AutoSwitchProvider>
+
+          <NavBar />
+          <main className="flex-1 flex flex-col bg-white">
+            {children}
+          </main>
+          <Footer />
+
         </AuthProvider>
       </body>
     </html>
