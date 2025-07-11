@@ -15,19 +15,21 @@ interface ModelSelectionDialogProps {
     onClose: () => void;
     onAddModel: (model: Model) => void;
     selectedModelIds: string[];
+    availableModels?: Model[]; // <-- add this prop
 }
 
 const ModelSelectionDialog: React.FC<ModelSelectionDialogProps> = ({
     isOpen,
     onClose,
     onAddModel,
-    selectedModelIds = []
+    selectedModelIds = [],
+    availableModels // <-- use this
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Sample model data - replace with your actual models
-    const availableModels: Model[] = [
+    // Use availableModels if provided, otherwise fallback to static list
+    const defaultModels: Model[] = [
         { id: 'minimax-m1', name: 'MiniMax: MiniMax M1', provider: 'MiniMax' },
         { id: 'minimax-m1-extended', name: 'MiniMax: MiniMax M1 (extended)', provider: 'MiniMax' },
         { id: 'gemini-2.5-flash', name: 'Google: Gemini 2.5 Flash Lite Preview 06-17', provider: 'Google', isNew: true },
@@ -37,6 +39,8 @@ const ModelSelectionDialog: React.FC<ModelSelectionDialogProps> = ({
         { id: 'openai-o3-pro', name: 'OpenAI: o3 Pro', provider: 'OpenAI' },
         { id: 'mistral-magistral', name: 'Mistral: Magistral Small 2506', provider: 'Mistral' }
     ];
+
+    const modelsToShow = availableModels && availableModels.length > 0 ? availableModels : defaultModels;
 
     useEffect(() => {
         if (isOpen && inputRef.current) {
@@ -50,7 +54,7 @@ const ModelSelectionDialog: React.FC<ModelSelectionDialogProps> = ({
         onAddModel(model);
     };
 
-    const filteredModels = availableModels.filter(model =>
+    const filteredModels = modelsToShow.filter(model =>
         model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         model.provider.toLowerCase().includes(searchQuery.toLowerCase())
     );

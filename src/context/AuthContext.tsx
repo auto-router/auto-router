@@ -45,18 +45,31 @@ class AuthService {
     localStorage.removeItem('user_data_timestamp');
   }
 
+
   private async fetchWithAuth(endpoint: string, options: RequestInit = {}, retryWithRefresh = true): Promise<any> {
     const headers = new Headers({ 'Content-Type': 'application/json', ...(options.headers as any || {}) });
     if (this.token) headers.set('Authorization', `Bearer ${this.token}`);
     const url = `${API_BASE_URL}${endpoint}`;
     try {
-      const response = await fetch(url, { ...options, headers });
-      const responseData = await response.json().catch(() => ({}));
-      // If access token expired, try to refresh and retry once
-      if (response.status === 401 && retryWithRefresh && this.refreshToken) {
+      // Check if access token is expired before making the request
+      if (this.isAccessTokenExpired() && this.refreshToken && !this.isRefreshTokenExpired()) {
         try {
           await this.refreshAccessToken();
           // Set new Authorization header with refreshed token
+          const newHeaders = new Headers(headers);
+          newHeaders.set('Authorization', `Bearer ${this.token}`);
+          return this.fetchWithAuth(endpoint, { ...options, headers: newHeaders }, false);
+        } catch {
+          this.clearTokens();
+          throw new AuthError('Session expired. Please login again.', 401);
+        }
+      }
+      const response = await fetch(url, { ...options, headers });
+      const responseData = await response.json().catch(() => ({}));
+      // If access token expired (e.g. backend returns 401), try to refresh and retry once
+      if (response.status === 401 && retryWithRefresh && this.refreshToken && !this.isRefreshTokenExpired()) {
+        try {
+          await this.refreshAccessToken();
           const newHeaders = new Headers(headers);
           newHeaders.set('Authorization', `Bearer ${this.token}`);
           return this.fetchWithAuth(endpoint, { ...options, headers: newHeaders }, false);
@@ -107,9 +120,9 @@ class AuthService {
 
   async refreshAccessToken() {
     // Backend returns: { user_id, access_token, refresh_token }
-    if (!this.refreshToken) {
+    if (!this.refreshToken || this.isRefreshTokenExpired()) {
       this.clearTokens();
-      throw new AuthError('No refresh token available');
+      throw new AuthError('No valid refresh token available');
     }
     try {
       const response = await fetch(`${API_BASE_URL}/refresh`, {
@@ -155,6 +168,35 @@ class AuthService {
 
   isAuthenticated() {
     return !!this.token;
+  }
+
+  // Decode a JWT and return its payload as an object
+  private decodeJWT(token: string): any | null {
+    try {
+      const payload = token.split('.')[1];
+      const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+      return JSON.parse(decoded);
+    } catch {
+      return null;
+    }
+  }
+
+  // Check if a JWT token is expired (returns true if expired)
+  private isTokenExpired(token: string | null): boolean {
+    if (!token) return true;
+    const payload = this.decodeJWT(token);
+    if (!payload || !payload.exp) return true;
+    // exp is in seconds, Date.now() is ms
+    return Date.now() >= payload.exp * 1000;
+  }
+
+  // Example usage: check if access or refresh token is expired
+  isAccessTokenExpired() {
+    return this.isTokenExpired(this.token);
+  }
+
+  isRefreshTokenExpired() {
+    return this.isTokenExpired(this.refreshToken);
   }
 }
 
