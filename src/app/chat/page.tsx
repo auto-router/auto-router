@@ -13,6 +13,8 @@ interface Model {
     cost?: number;
     input_modalities?: string[];
     output_modalities?: string[];
+    is_free?: boolean; // Add is_free field
+    context_length?: number;
 }
 
 interface ImageFile {
@@ -140,6 +142,8 @@ export default function ChatPage() {
                         cost: item.endpoint?.pricing?.prompt ? Number(item.endpoint.pricing.prompt) : undefined,
                         input_modalities: item.input_modalities || ["text"],
                         output_modalities: item.output_modalities || ["text"],
+                        is_free: item.endpoint?.is_free || false, // Add free model detection
+                        context_length: item.context_length || 0,
                     };
                 });
 
@@ -486,6 +490,11 @@ export default function ChatPage() {
                                             <div>
                                                 <div className="flex items-center gap-1">
                                                     <div className="text-xs font-medium text-gray-900 dark:text-gray-100">{model.name}</div>
+                                                    {model.is_free && (
+                                                        <span className="text-[8px] px-1 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
+                                                            FREE
+                                                        </span>
+                                                    )}
                                                     {isMultimodal && (
                                                         <span className="text-[8px] px-1 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
                                                             📷
@@ -494,13 +503,16 @@ export default function ChatPage() {
                                                 </div>
                                                 <div className="text-[10px] text-gray-400 dark:text-gray-500">
                                                     {model.provider}
-                                                    {modelCosts[model.id] && (
+                                                    {!model.is_free && modelCosts[model.id] && (
                                                         <span className="ml-1">
                                                             • ${modelCosts[model.id].prompt.toFixed(6)}/tok
                                                             {modelCosts[model.id].image > 0 && (
                                                                 <span>, ${modelCosts[model.id].image.toFixed(3)}/img</span>
                                                             )}
                                                         </span>
+                                                    )}
+                                                    {model.is_free && (
+                                                        <span className="ml-1 text-green-600 dark:text-green-400">• Free</span>
                                                     )}
                                                 </div>
                                             </div>
