@@ -11,13 +11,32 @@ interface Model {
     isActive?: boolean;
     description?: string;
     cost?: number;
+    input_modalities?: string[];
+    output_modalities?: string[];
 }
 
-const DEFAULT_MODEL_COST = 0.01;
+interface ImageFile {
+    file: File;
+    base64: string;
+    preview: string;
+}
 
 // Replace the mock function with actual API call
-async function sendChatMessage(model: string, message: string, conversationHistory: any[]) {
+async function sendChatMessage(model: string, message: string, conversationHistory: any[], images: ImageFile[] = []) {
     try {
+        // Prepare messages with image support
+        let content: any = message;
+
+        if (images.length > 0) {
+            content = [
+                { type: "text", text: message },
+                ...images.map(img => ({
+                    type: "image_url",
+                    image_url: { url: `data:${img.file.type};base64,${img.base64}` }
+                }))
+            ];
+        }
+
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: {
@@ -27,7 +46,7 @@ async function sendChatMessage(model: string, message: string, conversationHisto
                 model: model,
                 messages: [
                     ...conversationHistory,
-                    { role: "user", content: message }
+                    { role: "user", content }
                 ],
                 max_tokens: 1000,
                 temperature: 0.7,
@@ -39,10 +58,27 @@ async function sendChatMessage(model: string, message: string, conversationHisto
         }
 
         const data = await response.json();
-        return data.choices[0].message.content;
+
+        // Extract token usage for cost calculation
+        const usage = data.usage || {};
+        const promptTokens = usage.prompt_tokens || 0;
+        const completionTokens = usage.completion_tokens || 0;
+
+        return {
+            content: data.choices[0].message.content,
+            usage: {
+                promptTokens,
+                completionTokens,
+                totalTokens: usage.total_tokens || (promptTokens + completionTokens),
+                imageCount: images.length
+            }
+        };
     } catch (error) {
         console.error('Chat API error:', error);
-        return `Error: Failed to get response from ${model}. Please try again.`;
+        return {
+            content: `Error: Failed to get response from ${model}. Please try again.`,
+            usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0, imageCount: 0 }
+        };
     }
 }
 
@@ -56,18 +92,26 @@ export default function ChatPage() {
     const [useOpenRouter, setUseOpenRouter] = useState(true);
     const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
     const [input, setInput] = useState("");
-    const [messages, setMessages] = useState<{ user: string; responses: { [model: string]: string } }[]>([]);
+    const [messages, setMessages] = useState<{
+        user: string;
+        responses: { [model: string]: string };
+        actualCost?: number;
+        tokensUsed?: number;
+        images?: ImageFile[];
+    }[]>([]);
     const [costHistory, setCostHistory] = useState<{ saved: number; spent: number }[]>([]);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const [activeModel, setActiveModel] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedImages, setSelectedImages] = useState<ImageFile[]>([]);
 
-    // Model costs state
-    const [modelCosts, setModelCosts] = useState<Record<string, number>>({
-        "openrouter": 0.007,
+    // Model costs state - include image pricing
+    const [modelCosts, setModelCosts] = useState<Record<string, { prompt: number; completion: number; image: number }>>({
+        "openrouter": { prompt: 0.000007, completion: 0.000007, image: 0.001 }, // Keep openrouter as baseline
     });
 
     // Add conversation history state for API calls
-    const [conversationHistory, setConversationHistory] = useState<Array<{ role: string, content: string }>>([]);
+    const [conversationHistory, setConversationHistory] = useState<Array<{ role: string, content: any }>>([]);
 
     // Fetch models from API on mount
     useEffect(() => {
@@ -76,16 +120,17 @@ export default function ChatPage() {
             try {
                 const res = await fetch("/api/models");
                 const json = await res.json();
-                // Map API data to Model[] and ensure unique keys by appending index if duplicate
+
                 const seen = new Set<string>();
                 const mapped: Model[] = (json.data || []).map((item: any, idx: number) => {
                     let baseId = item.slug || item.permaslug || item.endpoint?.model_variant_slug || item.endpoint?.provider_model_id || item.name;
                     let id = baseId;
-                    // Ensure uniqueness by appending index if duplicate
+
                     if (seen.has(id)) {
                         id = `${baseId}__${idx}`;
                     }
                     seen.add(id);
+
                     return {
                         id,
                         name: item.name,
@@ -93,26 +138,35 @@ export default function ChatPage() {
                         isNew: false,
                         description: item.description,
                         cost: item.endpoint?.pricing?.prompt ? Number(item.endpoint.pricing.prompt) : undefined,
+                        input_modalities: item.input_modalities || ["text"],
+                        output_modalities: item.output_modalities || ["text"],
                     };
                 });
 
-                // Fix: define costs before using it
-                const costs: Record<string, number> = { "openrouter": 0.007 };
+                // Extract actual pricing from API response
+                const costs: Record<string, { prompt: number; completion: number; image: number }> = {
+                    "openrouter": { prompt: 0.000007, completion: 0.000007, image: 0.001 }
+                };
+
                 (json.data || []).forEach((item: any, idx: number) => {
                     let baseId = item.slug || item.permaslug || item.endpoint?.model_variant_slug || item.endpoint?.provider_model_id || item.name;
                     let id = baseId;
                     if (seen.has(id)) {
                         id = mapped[idx].id;
                     }
-                    const promptCost = Number(item.endpoint?.pricing?.prompt);
-                    if (!isNaN(promptCost)) {
-                        costs[id] = promptCost;
+
+                    const pricing = item.endpoint?.pricing;
+                    if (pricing) {
+                        costs[id] = {
+                            prompt: Number(pricing.prompt) || 0,
+                            completion: Number(pricing.completion) || 0,
+                            image: Number(pricing.image) || 0
+                        };
                     }
                 });
 
                 setAllModels(mapped);
                 setModelCosts(costs);
-                // Remove default selected model
                 setSelectedModels([]);
             } catch (e) {
                 setAllModels([]);
@@ -122,11 +176,44 @@ export default function ChatPage() {
         fetchModels();
     }, []);
 
+    // Handle image upload
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+
+        files.forEach(file => {
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const base64 = event.target?.result as string;
+                    const base64Data = base64.split(',')[1]; // Remove data:image/...;base64, prefix
+
+                    setSelectedImages(prev => [...prev, {
+                        file,
+                        base64: base64Data,
+                        preview: base64
+                    }]);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Reset file input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    // Remove image
+    const removeImage = (index: number) => {
+        setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    };
+
     // Function to clear conversation
     const clearConversation = () => {
         setMessages([]);
         setCostHistory([]);
-        setConversationHistory([]); // Clear conversation history for API
+        setConversationHistory([]);
+        setSelectedImages([]);
     };
 
     useEffect(() => {
@@ -149,14 +236,16 @@ export default function ChatPage() {
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim() || selectedModels.length === 0) return;
+        if ((!input.trim() && selectedImages.length === 0) || selectedModels.length === 0) return;
 
-        const userMessage = input.trim();
+        const userMessage = input.trim() || "What do you see in this image?";
+        const messagImages = [...selectedImages];
         setInput("");
+        setSelectedImages([]);
 
         let responses: { [model: string]: string } = {};
-        let spent = 0;
-        let saved = 0;
+        let actualCost = 0;
+        let tokensUsed = 0;
 
         // Determine which model to use
         let chosenModel: Model | undefined;
@@ -167,56 +256,97 @@ export default function ChatPage() {
         }
 
         if (chosenModel) {
+            // Check if model supports images
+            const supportsImages = chosenModel.input_modalities?.includes('image') || false;
+            if (messagImages.length > 0 && !supportsImages) {
+                responses[chosenModel.id] = "This model doesn't support image inputs. Please select a multimodal model.";
+                setMessages((prev) => [...prev, {
+                    user: userMessage,
+                    responses,
+                    images: messagImages
+                }]);
+                return;
+            }
+
             setActiveModel(chosenModel.id);
 
             try {
                 // Call the actual chat API
-                const response = await sendChatMessage(chosenModel.id, userMessage, conversationHistory);
-                responses[chosenModel.id] = response;
+                const result = await sendChatMessage(chosenModel.id, userMessage, conversationHistory, messagImages);
+                responses[chosenModel.id] = result.content;
 
-                // Calculate costs
-                const modelCost = modelCosts[chosenModel.id] ?? chosenModel.cost ?? DEFAULT_MODEL_COST;
-                spent += useOpenRouter ? (modelCosts["openrouter"] ?? DEFAULT_MODEL_COST) : modelCost;
-                saved += useOpenRouter ? Math.max(0, modelCost - (modelCosts["openrouter"] ?? DEFAULT_MODEL_COST)) : 0;
+                // Calculate actual costs based on token usage and images
+                const modelPricing = modelCosts[chosenModel.id];
+                if (modelPricing && result.usage) {
+                    const promptCost = result.usage.promptTokens * modelPricing.prompt;
+                    const completionCost = result.usage.completionTokens * modelPricing.completion;
+                    const imageCost = result.usage.imageCount * modelPricing.image;
+                    actualCost = promptCost + completionCost + imageCost;
+                    tokensUsed = result.usage.totalTokens;
+                }
 
-                // Update conversation history for future API calls - FIX: pass the actual response
+                // Update conversation history
+                const messageContent = messagImages.length > 0
+                    ? [
+                        { type: "text", text: userMessage },
+                        ...messagImages.map(img => ({
+                            type: "image_url",
+                            image_url: { url: img.preview }
+                        }))
+                    ]
+                    : userMessage;
+
                 setConversationHistory(prev => [
                     ...prev,
-                    { role: "user", content: userMessage },
-                    { role: "assistant", content: response }
+                    { role: "user", content: messageContent },
+                    { role: "assistant", content: result.content }
                 ]);
 
-                // Update UI
-                setMessages((prev) => [...prev, { user: userMessage, responses }]);
-                setCostHistory((prev) => [...prev, { saved, spent }]);
+                // Update UI with actual cost data
+                setMessages((prev) => [...prev, {
+                    user: userMessage,
+                    responses,
+                    actualCost,
+                    tokensUsed,
+                    images: messagImages
+                }]);
+
             } catch (error) {
-                // Handle error case
                 responses[chosenModel.id] = "Sorry, I encountered an error processing your request. Please try again.";
-                setMessages((prev) => [...prev, { user: userMessage, responses }]);
+                setMessages((prev) => [...prev, {
+                    user: userMessage,
+                    responses,
+                    images: messagImages
+                }]);
             }
 
             setActiveModel(null);
         }
     };
 
-    // Minimal analytics
-    // Calculate total spent using the actual cost of each message/model
+    // Calculate total spent using actual costs from API responses
     const totalSpent = messages.reduce((sum, msg) => {
-        const modelId = Object.keys(msg.responses)[0];
-        const model = allModels.find(m => m.id === modelId);
-        const cost = useOpenRouter
-            ? (modelCosts["openrouter"] ?? DEFAULT_MODEL_COST)
-            : (modelCosts[modelId] ?? model?.cost ?? DEFAULT_MODEL_COST);
-        return sum + cost;
+        return sum + (msg.actualCost || 0);
     }, 0);
 
+    // Calculate savings (comparison with standard pricing)
     const totalSaved = messages.reduce((sum, msg) => {
-        if (!useOpenRouter) return sum;
+        if (!useOpenRouter || !msg.actualCost) return sum;
+
         const modelId = Object.keys(msg.responses)[0];
         const model = allModels.find(m => m.id === modelId);
-        const modelCost = modelCosts[modelId] ?? model?.cost ?? DEFAULT_MODEL_COST;
-        const saved = Math.max(0, modelCost - (modelCosts["openrouter"] ?? DEFAULT_MODEL_COST));
-        return sum + saved;
+        const modelPricing = modelCosts[modelId];
+
+        if (modelPricing && msg.tokensUsed) {
+            // Estimate what it would cost with standard pricing (assume 50/50 split for estimation)
+            const estimatedPromptTokens = Math.floor(msg.tokensUsed * 0.3);
+            const estimatedCompletionTokens = msg.tokensUsed - estimatedPromptTokens;
+            const standardCost = (estimatedPromptTokens * modelPricing.prompt) + (estimatedCompletionTokens * modelPricing.completion);
+            const openRouterCost = msg.tokensUsed * modelCosts["openrouter"].prompt;
+
+            return sum + Math.max(0, standardCost - openRouterCost);
+        }
+        return sum;
     }, 0);
 
     const selectedLLMs = selectedModels.map(model => model.id);
@@ -224,7 +354,7 @@ export default function ChatPage() {
     const handleAddModel = (model: Model) => {
         // Add cost if not present
         if (model.id && modelCosts[model.id] === undefined) {
-            setModelCosts(prev => ({ ...prev, [model.id]: DEFAULT_MODEL_COST }));
+            setModelCosts(prev => ({ ...prev, [model.id]: { prompt: 0.000007, completion: 0.000007, image: 0 } }));
         }
 
         setSelectedModels(prev => {
@@ -290,6 +420,11 @@ export default function ChatPage() {
         );
     }
 
+    // Check if any selected model supports images
+    const hasMultimodalModel = selectedModels.some(model =>
+        model.input_modalities?.includes('image')
+    );
+
     return (
         <div className="flex max-h-[85vh] h-[700px] bg-white dark:bg-[#0a0a0a] rounded-xl shadow border border-gray-200 dark:border-gray-800 overflow-hidden">
             {/* Left sidebar - model selection */}
@@ -325,6 +460,8 @@ export default function ChatPage() {
                             {selectedModels.map((model) => {
                                 const isTyping = activeModel === model.id;
                                 const isActive = useOpenRouter || model.isActive;
+                                const isMultimodal = model.input_modalities?.includes('image');
+
                                 return (
                                     <div
                                         key={model.id}
@@ -347,8 +484,25 @@ export default function ChatPage() {
                                                 {isTyping && <div className="w-2 h-2 rounded-full bg-green-500 mx-auto my-auto animate-pulse"></div>}
                                             </div>
                                             <div>
-                                                <div className="text-xs font-medium text-gray-900 dark:text-gray-100">{model.name}</div>
-                                                <div className="text-[10px] text-gray-400 dark:text-gray-500">{model.provider}</div>
+                                                <div className="flex items-center gap-1">
+                                                    <div className="text-xs font-medium text-gray-900 dark:text-gray-100">{model.name}</div>
+                                                    {isMultimodal && (
+                                                        <span className="text-[8px] px-1 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
+                                                            📷
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-[10px] text-gray-400 dark:text-gray-500">
+                                                    {model.provider}
+                                                    {modelCosts[model.id] && (
+                                                        <span className="ml-1">
+                                                            • ${modelCosts[model.id].prompt.toFixed(6)}/tok
+                                                            {modelCosts[model.id].image > 0 && (
+                                                                <span>, ${modelCosts[model.id].image.toFixed(3)}/img</span>
+                                                            )}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                         <button
@@ -391,8 +545,8 @@ export default function ChatPage() {
                         </label>
                         {useOpenRouter && (
                             <div className="mt-2 text-[11px] text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-1 rounded">
-                                <span>Price: ${modelCosts["openrouter"]?.toFixed(3)}/msg</span>
-                                <span className="ml-2">Saved: ${totalSaved.toFixed(2)}</span>
+                                <span>Avg: ${modelCosts["openrouter"]?.prompt.toFixed(6)}/token</span>
+                                <span className="ml-2">Saved: ${totalSaved.toFixed(4)}</span>
                             </div>
                         )}
                     </div>
@@ -400,11 +554,17 @@ export default function ChatPage() {
                 <div className="border-t border-gray-100 dark:border-gray-800 p-2 bg-white dark:bg-[#161616]">
                     <div className="flex justify-between text-xs">
                         <span className="text-gray-400">Spent</span>
-                        <span className="font-semibold text-gray-800 dark:text-gray-100">${totalSpent.toFixed(3)}</span>
+                        <span className="font-semibold text-gray-800 dark:text-gray-100">${totalSpent.toFixed(6)}</span>
                     </div>
                     <div className="flex justify-between text-xs mt-1">
                         <span className="text-gray-400">Saved</span>
-                        <span className="font-semibold text-green-600 dark:text-green-400">${totalSaved.toFixed(3)}</span>
+                        <span className="font-semibold text-green-600 dark:text-green-400">${totalSaved.toFixed(6)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs mt-1">
+                        <span className="text-gray-400">Tokens</span>
+                        <span className="font-semibold text-gray-800 dark:text-gray-100">
+                            {messages.reduce((sum, msg) => sum + (msg.tokensUsed || 0), 0).toLocaleString()}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -440,6 +600,9 @@ export default function ChatPage() {
                                     {useOpenRouter
                                         ? `Smart routing enabled (${selectedLLMs.length} model${selectedLLMs.length !== 1 ? 's' : ''})`
                                         : 'Manual model selection'}
+                                    {hasMultimodalModel && (
+                                        <span className="block mt-1">📷 Image support available</span>
+                                    )}
                                 </p>
                             </div>
                         ) : (
@@ -451,10 +614,26 @@ export default function ChatPage() {
                                             <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
                                                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">U</span>
                                             </div>
-                                            <div className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded text-gray-800 dark:text-gray-200 text-sm">
-                                                {msg.user}
+                                            <div className="flex-1">
+                                                <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded text-gray-800 dark:text-gray-200 text-sm">
+                                                    {msg.user}
+                                                </div>
+                                                {/* Display images if any */}
+                                                {msg.images && msg.images.length > 0 && (
+                                                    <div className="flex gap-2 mt-2 flex-wrap">
+                                                        {msg.images.map((img, imgIdx) => (
+                                                            <img
+                                                                key={imgIdx}
+                                                                src={img.preview}
+                                                                alt="Uploaded"
+                                                                className="w-20 h-20 object-cover rounded border"
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
+
                                         {/* Model responses */}
                                         {Object.entries(msg.responses).map(([model, response]) => {
                                             const modelInfo = allModels.find(m => m.id === model);
@@ -499,27 +678,81 @@ export default function ChatPage() {
                         )}
                     </div>
                 </div>
-                <div className="border-t border-gray-100 dark:border-gray-800 p-3 bg-white dark:bg-[#181818]">
-                    <form onSubmit={handleSend} className="max-w-2xl mx-auto flex items-center gap-2">
-                        <input
-                            type="text"
-                            placeholder="Message Auto-Router..."
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            disabled={selectedLLMs.length === 0}
-                            className="flex-1 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-400 bg-white dark:bg-[#191919] text-sm text-gray-900 dark:text-gray-100 disabled:opacity-50"
-                        />
-                        <button
-                            type="submit"
-                            disabled={!input.trim() || selectedLLMs.length === 0}
-                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
-                        >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="22" y1="2" x2="11" y2="13"></line>
-                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                            </svg>
-                        </button>
-                    </form>
+
+                {/* Message input with image upload */}
+                <div className="border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-[#181818]">
+                    {/* Image preview */}
+                    {selectedImages.length > 0 && (
+                        <div className="p-3 border-b border-gray-100 dark:border-gray-800">
+                            <div className="flex gap-2 flex-wrap">
+                                {selectedImages.map((img, idx) => (
+                                    <div key={idx} className="relative">
+                                        <img
+                                            src={img.preview}
+                                            alt="Preview"
+                                            className="w-16 h-16 object-cover rounded border"
+                                        />
+                                        <button
+                                            onClick={() => removeImage(idx)}
+                                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="p-3">
+                        <form onSubmit={handleSend} className="max-w-2xl mx-auto flex items-center gap-2">
+                            {/* Image upload button */}
+                            {hasMultimodalModel && (
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2"
+                                    title="Upload image"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                        <circle cx="8.5" cy="8.5" r="1.5" />
+                                        <polyline points="21,15 16,10 5,21" />
+                                    </svg>
+                                </button>
+                            )}
+
+                            <input
+                                type="text"
+                                placeholder={selectedImages.length > 0 ? "Ask about your images..." : "Message Auto-Router..."}
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                disabled={selectedModels.length === 0}
+                                className="flex-1 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-400 bg-white dark:bg-[#191919] text-sm text-gray-900 dark:text-gray-100 disabled:opacity-50"
+                            />
+
+                            <button
+                                type="submit"
+                                disabled={(!input.trim() && selectedImages.length === 0) || selectedModels.length === 0}
+                                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
+                            </button>
+
+                            {/* Hidden file input */}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={handleImageUpload}
+                                className="hidden"
+                            />
+                        </form>
+                    </div>
                 </div>
             </div>
 
@@ -550,11 +783,11 @@ export default function ChatPage() {
                         <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Cost</h3>
                         <div className="flex justify-between text-xs mb-1">
                             <span className="text-gray-400">Spent</span>
-                            <span className="font-semibold text-gray-800 dark:text-gray-100">${totalSpent.toFixed(3)}</span>
+                            <span className="font-semibold text-gray-800 dark:text-gray-100">${totalSpent.toFixed(6)}</span>
                         </div>
                         <div className="flex justify-between text-xs">
                             <span className="text-gray-400">Saved</span>
-                            <span className="font-semibold text-green-600 dark:text-green-400">${totalSaved.toFixed(3)}</span>
+                            <span className="font-semibold text-green-600 dark:text-green-400">${totalSaved.toFixed(6)}</span>
                         </div>
                     </div>
                 </div>

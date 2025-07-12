@@ -125,9 +125,17 @@ const ModelSelectionDialog: React.FC<ModelSelectionDialogProps> = ({
                                                             new
                                                         </span>
                                                     )}
+                                                    {model.input_modalities?.includes('image') && (
+                                                        <span className="ml-2 px-1.5 py-0.5 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded font-medium">
+                                                            📷 multimodal
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className="text-xs text-gray-500 dark:text-gray-400">
                                                     {model.provider}
+                                                    {model.cost && (
+                                                        <span className="ml-2">• ${model.cost.toFixed(6)}/token</span>
+                                                    )}
                                                 </div>
                                             </div>
                                             <button
