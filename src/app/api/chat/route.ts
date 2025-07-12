@@ -8,6 +8,8 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { model, messages, max_tokens, temperature, top_p } = body;
 
+        console.log('Attempting to use model:', model);
+
         // Forward the request to your backend
         const response = await fetch(`${BACKEND_BASE_URL}/v1/chat/completions`, {
             method: 'POST',
@@ -27,8 +29,25 @@ export async function POST(req: NextRequest) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Backend API error:', response.status, errorText);
+
+            // Provide more specific error messages based on the error type
+            if (response.status === 404) {
+                return NextResponse.json(
+                    {
+                        error: 'Model not available or not found',
+                        details: `The model "${model}" is not currently available. It may be disabled, deprecated, or have insufficient quota.`,
+                        model: model
+                    },
+                    { status: 404 }
+                );
+            }
+
             return NextResponse.json(
-                { error: 'Failed to get response from backend' },
+                {
+                    error: 'Failed to get response from backend',
+                    details: errorText,
+                    status: response.status
+                },
                 { status: response.status }
             );
         }

@@ -8,6 +8,11 @@ interface Model {
     provider: string;
     description?: string;
     isNew?: boolean;
+    cost?: number;
+    input_modalities?: string[];
+    output_modalities?: string[];
+    is_free?: boolean;
+    context_length?: number;
 }
 
 interface ModelSelectionDialogProps {
@@ -125,9 +130,18 @@ const ModelSelectionDialog: React.FC<ModelSelectionDialogProps> = ({
                                                             new
                                                         </span>
                                                     )}
-                                                    {model.input_modalities?.includes('image') && (
+                                                    {model.is_free && (
+                                                        <span className="ml-2 px-1.5 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded font-medium">
+                                                            FREE
+                                                        </span>
+                                                    )}
+                                                    {model.input_modalities && model.input_modalities.length > 1 && (
                                                         <span className="ml-2 px-1.5 py-0.5 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded font-medium">
-                                                            📷 multimodal
+                                                            {model.input_modalities?.includes('image') && '📷'}
+                                                            {model.input_modalities?.includes('audio') && '🎵'}
+                                                            {model.input_modalities?.includes('video') && '🎥'}
+                                                            {model.input_modalities?.includes('document') && '📄'}
+                                                            multimodal
                                                         </span>
                                                     )}
                                                 </div>
@@ -135,6 +149,9 @@ const ModelSelectionDialog: React.FC<ModelSelectionDialogProps> = ({
                                                     {model.provider}
                                                     {model.cost && (
                                                         <span className="ml-2">• ${model.cost.toFixed(6)}/token</span>
+                                                    )}
+                                                    {model.is_free && (
+                                                        <span className="ml-2 text-green-600 dark:text-green-400">• Free</span>
                                                     )}
                                                 </div>
                                             </div>
