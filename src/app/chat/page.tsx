@@ -10,14 +10,40 @@ interface Model {
     isNew?: boolean;
     isActive?: boolean;
     description?: string;
-    cost?: number; // Add cost field
+    cost?: number;
 }
 
-// Remove static LLM_MODELS and MODEL_COSTS
 const DEFAULT_MODEL_COST = 0.01;
 
-function getRandomResponse(model: string, message: string) {
-    return `(${model}) Response: "${message.slice(0, 40)}..."`;
+// Replace the mock function with actual API call
+async function sendChatMessage(model: string, message: string, conversationHistory: any[]) {
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [
+                    ...conversationHistory,
+                    { role: "user", content: message }
+                ],
+                max_tokens: 1000,
+                temperature: 0.7,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+    } catch (error) {
+        console.error('Chat API error:', error);
+        return `Error: Failed to get response from ${model}. Please try again.`;
+    }
 }
 
 export default function ChatPage() {
@@ -39,6 +65,9 @@ export default function ChatPage() {
     const [modelCosts, setModelCosts] = useState<Record<string, number>>({
         "openrouter": 0.007,
     });
+
+    // Add conversation history state for API calls
+    const [conversationHistory, setConversationHistory] = useState<Array<{ role: string, content: string }>>([]);
 
     // Fetch models from API on mount
     useEffect(() => {
@@ -97,6 +126,7 @@ export default function ChatPage() {
     const clearConversation = () => {
         setMessages([]);
         setCostHistory([]);
+        setConversationHistory([]); // Clear conversation history for API
     };
 
     useEffect(() => {
@@ -117,36 +147,56 @@ export default function ChatPage() {
         });
     };
 
-    const handleSend = (e: React.FormEvent) => {
+    const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!input.trim() || selectedModels.length === 0) return;
+
+        const userMessage = input.trim();
+        setInput("");
 
         let responses: { [model: string]: string } = {};
         let spent = 0;
         let saved = 0;
 
-        // Only use the active model (first in list if smart routing, or the active one)
+        // Determine which model to use
         let chosenModel: Model | undefined;
         if (useOpenRouter) {
             chosenModel = selectedModels[0];
         } else {
             chosenModel = selectedModels.find(m => m.isActive) || selectedModels[0];
         }
+
         if (chosenModel) {
             setActiveModel(chosenModel.id);
-            setTimeout(() => {
-                responses[chosenModel!.id] = getRandomResponse(chosenModel!.id, input);
-                const modelCost = modelCosts[chosenModel!.id] ?? chosenModel!.cost ?? DEFAULT_MODEL_COST;
+
+            try {
+                // Call the actual chat API
+                const response = await sendChatMessage(chosenModel.id, userMessage, conversationHistory);
+                responses[chosenModel.id] = response;
+
+                // Calculate costs
+                const modelCost = modelCosts[chosenModel.id] ?? chosenModel.cost ?? DEFAULT_MODEL_COST;
                 spent += useOpenRouter ? (modelCosts["openrouter"] ?? DEFAULT_MODEL_COST) : modelCost;
                 saved += useOpenRouter ? Math.max(0, modelCost - (modelCosts["openrouter"] ?? DEFAULT_MODEL_COST)) : 0;
 
-                setActiveModel(null);
-                setMessages((prev) => [...prev, { user: input, responses }]);
-                setCostHistory((prev) => [...prev, { saved, spent }]);
-            }, 800);
-        }
+                // Update conversation history for future API calls - FIX: pass the actual response
+                setConversationHistory(prev => [
+                    ...prev,
+                    { role: "user", content: userMessage },
+                    { role: "assistant", content: response }
+                ]);
 
-        setInput("");
+                // Update UI
+                setMessages((prev) => [...prev, { user: userMessage, responses }]);
+                setCostHistory((prev) => [...prev, { saved, spent }]);
+            } catch (error) {
+                // Handle error case
+                responses[chosenModel.id] = "Sorry, I encountered an error processing your request. Please try again.";
+                setMessages((prev) => [...prev, { user: userMessage, responses }]);
+            }
+
+            setActiveModel(null);
+        }
     };
 
     // Minimal analytics
