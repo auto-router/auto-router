@@ -6,9 +6,24 @@ const API_KEY = process.env.BACKEND_API_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpX
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { model, messages, max_tokens, temperature, top_p } = body;
+        const { model, messages, max_tokens, temperature, top_p, extra_body } = body;
 
         console.log('Attempting to use model:', model);
+        console.log('Extra body:', extra_body);
+
+        // Prepare the request body for the backend
+        const requestBody: any = {
+            model,
+            messages,
+            max_tokens: max_tokens || 1000,
+            temperature: temperature || 0.7,
+            top_p: top_p || 1,
+        };
+
+        // Add extra_body if provided (for auto-router model selection)
+        if (extra_body) {
+            requestBody.extra_body = extra_body;
+        }
 
         // Forward the request to your backend
         const response = await fetch(`${BACKEND_BASE_URL}/v1/chat/completions`, {
@@ -17,13 +32,7 @@ export async function POST(req: NextRequest) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${API_KEY}`,
             },
-            body: JSON.stringify({
-                model,
-                messages,
-                max_tokens: max_tokens || 1000,
-                temperature: temperature || 0.7,
-                top_p: top_p || 1,
-            }),
+            body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
@@ -53,6 +62,12 @@ export async function POST(req: NextRequest) {
         }
 
         const data = await response.json();
+
+        // Log the actual model used for auto-router responses
+        if (model === "auto-router/auto" && data.model) {
+            console.log('Auto-router selected model:', data.model);
+        }
+
         return NextResponse.json(data);
     } catch (error) {
         console.error('Chat API route error:', error);

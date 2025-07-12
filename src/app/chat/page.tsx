@@ -24,7 +24,14 @@ interface ImageFile {
 }
 
 // Replace the mock function with actual API call
-async function sendChatMessage(model: string, message: string, conversationHistory: any[], images: ImageFile[] = []) {
+async function sendChatMessage(
+    model: string,
+    message: string,
+    conversationHistory: any[],
+    images: ImageFile[] = [],
+    useAutoRouter: boolean = false,
+    availableModels: string[] = []
+) {
     try {
         // Prepare messages with image support
         let content: any = message;
@@ -39,20 +46,30 @@ async function sendChatMessage(model: string, message: string, conversationHisto
             ];
         }
 
+        // Prepare request body with auto-router support
+        const requestBody: any = {
+            model: useAutoRouter ? "auto-router/auto" : model,
+            messages: [
+                ...conversationHistory,
+                { role: "user", content }
+            ],
+            max_tokens: 1000,
+            temperature: 0.7,
+        };
+
+        // Add extra_body for auto-router with available models
+        if (useAutoRouter && availableModels.length > 0) {
+            requestBody.extra_body = {
+                models: availableModels
+            };
+        }
+
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                model: model,
-                messages: [
-                    ...conversationHistory,
-                    { role: "user", content }
-                ],
-                max_tokens: 1000,
-                temperature: 0.7,
-            }),
+            body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
@@ -61,13 +78,17 @@ async function sendChatMessage(model: string, message: string, conversationHisto
 
         const data = await response.json();
 
-        // Extract token usage for cost calculation
+        // Extract token usage and model information for cost calculation
         const usage = data.usage || {};
         const promptTokens = usage.prompt_tokens || 0;
         const completionTokens = usage.completion_tokens || 0;
 
+        // Extract the actual model used (for auto-router responses)
+        const actualModelUsed = data.model || model;
+
         return {
             content: data.choices[0].message.content,
+            actualModel: actualModelUsed, // Track which model was actually used
             usage: {
                 promptTokens,
                 completionTokens,
@@ -79,6 +100,7 @@ async function sendChatMessage(model: string, message: string, conversationHisto
         console.error('Chat API error:', error);
         return {
             content: `Error: Failed to get response from ${model}. Please try again.`,
+            actualModel: model,
             usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0, imageCount: 0 }
         };
     }
@@ -100,6 +122,7 @@ export default function ChatPage() {
         actualCost?: number;
         tokensUsed?: number;
         images?: ImageFile[];
+        actualModelUsed?: string; // Track which model was actually used
     }[]>([]);
     const [costHistory, setCostHistory] = useState<{ saved: number; spent: number }[]>([]);
     const chatEndRef = useRef<HTMLDivElement>(null);
@@ -250,19 +273,24 @@ export default function ChatPage() {
         let responses: { [model: string]: string } = {};
         let actualCost = 0;
         let tokensUsed = 0;
+        let actualModelUsed: string = "";
 
         // Determine which model to use
         let chosenModel: Model | undefined;
+        let availableModelIds: string[] = [];
+
         if (useOpenRouter) {
-            chosenModel = selectedModels[0];
+            // For auto-router, collect all selected model IDs
+            availableModelIds = selectedModels.map(m => m.id);
+            chosenModel = selectedModels[0]; // Use first as fallback for UI display
         } else {
             chosenModel = selectedModels.find(m => m.isActive) || selectedModels[0];
         }
 
         if (chosenModel) {
-            // Check if model supports images
+            // Check if model supports images (skip check for auto-router as it can route to multimodal models)
             const supportsImages = chosenModel.input_modalities?.includes('image') || false;
-            if (messagImages.length > 0 && !supportsImages) {
+            if (messagImages.length > 0 && !supportsImages && !useOpenRouter) {
                 responses[chosenModel.id] = "This model doesn't support image inputs. Please select a multimodal model.";
                 setMessages((prev) => [...prev, {
                     user: userMessage,
@@ -272,15 +300,24 @@ export default function ChatPage() {
                 return;
             }
 
-            setActiveModel(chosenModel.id);
+            setActiveModel(useOpenRouter ? "auto-router/auto" : chosenModel.id);
 
             try {
-                // Call the actual chat API
-                const result = await sendChatMessage(chosenModel.id, userMessage, conversationHistory, messagImages);
-                responses[chosenModel.id] = result.content;
+                // Call the actual chat API with auto-router support
+                const result = await sendChatMessage(
+                    chosenModel.id,
+                    userMessage,
+                    conversationHistory,
+                    messagImages,
+                    useOpenRouter,
+                    availableModelIds
+                );
 
-                // Calculate actual costs based on token usage and images
-                const modelPricing = modelCosts[chosenModel.id];
+                actualModelUsed = result.actualModel;
+                responses[actualModelUsed] = result.content;
+
+                // Calculate actual costs based on the model that was actually used
+                const modelPricing = modelCosts[actualModelUsed] || modelCosts[chosenModel.id];
                 if (modelPricing && result.usage) {
                     const promptCost = result.usage.promptTokens * modelPricing.prompt;
                     const completionCost = result.usage.completionTokens * modelPricing.completion;
@@ -306,13 +343,14 @@ export default function ChatPage() {
                     { role: "assistant", content: result.content }
                 ]);
 
-                // Update UI with actual cost data
+                // Update UI with actual cost data and model used
                 setMessages((prev) => [...prev, {
                     user: userMessage,
                     responses,
                     actualCost,
                     tokensUsed,
-                    images: messagImages
+                    images: messagImages,
+                    actualModelUsed // Track which model was actually used for this message
                 }]);
 
             } catch (error) {
@@ -335,23 +373,42 @@ export default function ChatPage() {
 
     // Calculate savings (comparison with standard pricing)
     const totalSaved = messages.reduce((sum, msg) => {
-        if (!useOpenRouter || !msg.actualCost) return sum;
+        if (!useOpenRouter || !msg.actualCost || !msg.actualModelUsed) return sum;
 
-        const modelId = Object.keys(msg.responses)[0];
-        const model = allModels.find(m => m.id === modelId);
-        const modelPricing = modelCosts[modelId];
+        const actualModelPricing = modelCosts[msg.actualModelUsed];
+        const autoRouterPricing = modelCosts["auto-router/auto"] || modelCosts["openrouter"];
 
-        if (modelPricing && msg.tokensUsed) {
-            // Estimate what it would cost with standard pricing (assume 50/50 split for estimation)
+        if (actualModelPricing && msg.tokensUsed) {
+            // Calculate what it would have cost with the direct model
             const estimatedPromptTokens = Math.floor(msg.tokensUsed * 0.3);
             const estimatedCompletionTokens = msg.tokensUsed - estimatedPromptTokens;
-            const standardCost = (estimatedPromptTokens * modelPricing.prompt) + (estimatedCompletionTokens * modelPricing.completion);
-            const openRouterCost = msg.tokensUsed * modelCosts["openrouter"].prompt;
+            const directModelCost = (estimatedPromptTokens * actualModelPricing.prompt) +
+                (estimatedCompletionTokens * actualModelPricing.completion);
 
-            return sum + Math.max(0, standardCost - openRouterCost);
+            // Auto-router cost is much lower due to smart routing
+            const autoRouterCost = msg.actualCost || 0;
+
+            return sum + Math.max(0, directModelCost - autoRouterCost);
         }
         return sum;
     }, 0);
+
+    // Calculate savings percentage
+    const totalCostIfDirect = messages.reduce((sum, msg) => {
+        if (!msg.actualModelUsed || !msg.tokensUsed) return sum;
+
+        const actualModelPricing = modelCosts[msg.actualModelUsed];
+        if (actualModelPricing) {
+            const estimatedPromptTokens = Math.floor(msg.tokensUsed * 0.3);
+            const estimatedCompletionTokens = msg.tokensUsed - estimatedPromptTokens;
+            const directCost = (estimatedPromptTokens * actualModelPricing.prompt) +
+                (estimatedCompletionTokens * actualModelPricing.completion);
+            return sum + directCost;
+        }
+        return sum;
+    }, 0);
+
+    const savingsPercentage = totalCostIfDirect > 0 ? ((totalSaved / totalCostIfDirect) * 100) : 0;
 
     const selectedLLMs = selectedModels.map(model => model.id);
 
@@ -556,9 +613,24 @@ export default function ChatPage() {
                             <span className="text-[10px] text-gray-500">{useOpenRouter ? "Best (max 3)" : "Manual"}</span>
                         </label>
                         {useOpenRouter && (
-                            <div className="mt-2 text-[11px] text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-1 rounded">
-                                <span>Avg: ${modelCosts["openrouter"]?.prompt.toFixed(6)}/token</span>
-                                <span className="ml-2">Saved: ${totalSaved.toFixed(4)}</span>
+                            <div className="mt-2 text-[11px] text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-2 rounded">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span>Auto-Router Savings:</span>
+                                    <span className="font-semibold text-green-600 dark:text-green-400">
+                                        ${totalSaved.toFixed(6)}
+                                    </span>
+                                </div>
+                                {savingsPercentage > 0 && (
+                                    <div className="flex justify-between items-center">
+                                        <span>Savings:</span>
+                                        <span className="font-semibold text-green-600 dark:text-green-400">
+                                            {savingsPercentage.toFixed(1)}%
+                                        </span>
+                                    </div>
+                                )}
+                                <div className="text-[10px] text-gray-400 mt-1">
+                                    vs. direct model usage
+                                </div>
                             </div>
                         )}
                     </div>
@@ -570,7 +642,12 @@ export default function ChatPage() {
                     </div>
                     <div className="flex justify-between text-xs mt-1">
                         <span className="text-gray-400">Saved</span>
-                        <span className="font-semibold text-green-600 dark:text-green-400">${totalSaved.toFixed(6)}</span>
+                        <span className="font-semibold text-green-600 dark:text-green-400">
+                            ${totalSaved.toFixed(6)}
+                            {savingsPercentage > 0 && (
+                                <span className="ml-1 text-[10px]">({savingsPercentage.toFixed(1)}%)</span>
+                            )}
+                        </span>
                     </div>
                     <div className="flex justify-between text-xs mt-1">
                         <span className="text-gray-400">Tokens</span>
@@ -578,6 +655,11 @@ export default function ChatPage() {
                             {messages.reduce((sum, msg) => sum + (msg.tokensUsed || 0), 0).toLocaleString()}
                         </span>
                     </div>
+                    {useOpenRouter && totalSaved > 0 && (
+                        <div className="mt-2 p-1 bg-green-50 dark:bg-green-900/20 rounded text-[10px] text-green-700 dark:text-green-400 text-center">
+                            💰 Auto-Router saved you ${totalSaved.toFixed(6)}!
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -649,6 +731,8 @@ export default function ChatPage() {
                                         {/* Model responses */}
                                         {Object.entries(msg.responses).map(([model, response]) => {
                                             const modelInfo = allModels.find(m => m.id === model);
+                                            const isAutoRouted = useOpenRouter && msg.actualModelUsed && msg.actualModelUsed !== model;
+
                                             return (
                                                 <div key={model} className="flex items-start gap-2">
                                                     <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
@@ -656,10 +740,17 @@ export default function ChatPage() {
                                                     </div>
                                                     <div className="flex-1 px-3 py-2 border border-gray-100 dark:border-gray-800 rounded text-gray-800 dark:text-gray-200 text-sm bg-white dark:bg-[#191919]">
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{modelInfo?.name}</span>
+                                                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                                                {isAutoRouted ? allModels.find(m => m.id === msg.actualModelUsed)?.name : modelInfo?.name}
+                                                            </span>
                                                             {useOpenRouter && (
                                                                 <span className="text-[10px] px-1 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
                                                                     via Auto-Router
+                                                                </span>
+                                                            )}
+                                                            {msg.actualModelUsed && msg.actualModelUsed !== model && (
+                                                                <span className="text-[10px] px-1 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
+                                                                    Selected: {allModels.find(m => m.id === msg.actualModelUsed)?.name}
                                                                 </span>
                                                             )}
                                                         </div>
@@ -792,15 +883,35 @@ export default function ChatPage() {
                         </div>
                     </div>
                     <div>
-                        <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Cost</h3>
+                        <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Cost Analysis</h3>
                         <div className="flex justify-between text-xs mb-1">
                             <span className="text-gray-400">Spent</span>
                             <span className="font-semibold text-gray-800 dark:text-gray-100">${totalSpent.toFixed(6)}</span>
                         </div>
-                        <div className="flex justify-between text-xs">
+                        <div className="flex justify-between text-xs mb-1">
                             <span className="text-gray-400">Saved</span>
                             <span className="font-semibold text-green-600 dark:text-green-400">${totalSaved.toFixed(6)}</span>
                         </div>
+                        {useOpenRouter && totalCostIfDirect > 0 && (
+                            <>
+                                <div className="flex justify-between text-xs mb-1">
+                                    <span className="text-gray-400">Would've Cost</span>
+                                    <span className="font-semibold text-red-500 dark:text-red-400">${totalCostIfDirect.toFixed(6)}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-gray-400">Efficiency</span>
+                                    <span className="font-semibold text-green-600 dark:text-green-400">{savingsPercentage.toFixed(1)}%</span>
+                                </div>
+                                <div className="mt-2 bg-green-50 dark:bg-green-900/20 p-2 rounded">
+                                    <div className="text-[10px] text-green-700 dark:text-green-400 text-center font-medium">
+                                        Auto-Router Savings
+                                    </div>
+                                    <div className="text-xs text-green-600 dark:text-green-300 text-center font-bold">
+                                        ${totalSaved.toFixed(6)}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
