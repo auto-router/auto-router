@@ -371,12 +371,11 @@ export default function ChatPage() {
         return sum + (msg.actualCost || 0);
     }, 0);
 
-    // Calculate savings (comparison with standard pricing)
+    // Calculate savings with more accurate model tracking
     const totalSaved = messages.reduce((sum, msg) => {
-        if (!useOpenRouter || !msg.actualCost || !msg.actualModelUsed) return sum;
+        if (!useOpenRouter || !msg.actualModelUsed || !msg.tokensUsed) return sum;
 
         const actualModelPricing = modelCosts[msg.actualModelUsed];
-        const autoRouterPricing = modelCosts["auto-router/auto"] || modelCosts["openrouter"];
 
         if (actualModelPricing && msg.tokensUsed) {
             // Calculate what it would have cost with the direct model
@@ -385,17 +384,18 @@ export default function ChatPage() {
             const directModelCost = (estimatedPromptTokens * actualModelPricing.prompt) +
                 (estimatedCompletionTokens * actualModelPricing.completion);
 
-            // Auto-router cost is much lower due to smart routing
-            const autoRouterCost = msg.actualCost || 0;
+            // What you actually paid through auto-router
+            const actualCostPaid = msg.actualCost || 0;
 
-            return sum + Math.max(0, directModelCost - autoRouterCost);
+            // Savings is the difference (only if direct cost would have been higher)
+            return sum + Math.max(0, directModelCost - actualCostPaid);
         }
         return sum;
     }, 0);
 
-    // Calculate savings percentage
+    // Calculate what the total cost would have been if using models directly
     const totalCostIfDirect = messages.reduce((sum, msg) => {
-        if (!msg.actualModelUsed || !msg.tokensUsed) return sum;
+        if (!useOpenRouter || !msg.actualModelUsed || !msg.tokensUsed) return sum;
 
         const actualModelPricing = modelCosts[msg.actualModelUsed];
         if (actualModelPricing) {
@@ -408,6 +408,7 @@ export default function ChatPage() {
         return sum;
     }, 0);
 
+    // Calculate efficiency percentage
     const savingsPercentage = totalCostIfDirect > 0 ? ((totalSaved / totalCostIfDirect) * 100) : 0;
 
     const selectedLLMs = selectedModels.map(model => model.id);
@@ -610,7 +611,7 @@ export default function ChatPage() {
                             <div className={`w-8 h-4 rounded-full transition-colors ${useOpenRouter ? "bg-green-400" : "bg-gray-300 dark:bg-gray-700"}`}>
                                 <div className={`absolute left-0.5 top-0.5 bg-white w-3 h-3 rounded-full transition-transform ${useOpenRouter ? "transform translate-x-4" : ""}`}></div>
                             </div>
-                            <span className="text-[10px] text-gray-500">{useOpenRouter ? "Best (max 3)" : "Manual"}</span>
+                            <span className="text-[10px] text-gray-500">{useOpenRouter ? "Auto (max 3)" : "Manual"}</span>
                         </label>
                         {useOpenRouter && (
                             <div className="mt-2 text-[11px] text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-2 rounded">
@@ -866,20 +867,46 @@ export default function ChatPage() {
                 </div>
                 <div className="flex-1 p-3 overflow-y-auto">
                     <div className="mb-4">
-                        <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Active Models</h3>
+                        <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            {useOpenRouter ? "Available Models" : "Active Model"}
+                        </h3>
                         <div className="space-y-1">
-                            {selectedLLMs.map(modelId => {
-                                const model = allModels.find(m => m.id === modelId);
-                                return (
-                                    <div key={modelId} className="flex items-center gap-2 p-2 rounded bg-gray-50 dark:bg-gray-800">
-                                        <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-[10px] font-bold">{model?.name[0] || "M"}</div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{model?.name}</div>
-                                            <div className="text-[10px] text-gray-400">{model?.provider}</div>
+                            {useOpenRouter ? (
+                                // Show all selected models when smart routing is enabled
+                                selectedLLMs.map(modelId => {
+                                    const model = allModels.find(m => m.id === modelId);
+                                    return (
+                                        <div key={modelId} className="flex items-center gap-2 p-2 rounded bg-gray-50 dark:bg-gray-800">
+                                            <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-[10px] font-bold">{model?.name[0] || "M"}</div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{model?.name}</div>
+                                                <div className="text-[10px] text-gray-400">{model?.provider}</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })
+                            ) : (
+                                // Show only the active model when smart routing is disabled
+                                selectedModels
+                                    .filter(model => model.isActive)
+                                    .map(model => (
+                                        <div key={model.id} className="flex items-center gap-2 p-2 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                                            <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-bold">{model.name[0] || "M"}</div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{model.name}</div>
+                                                <div className="text-[10px] text-gray-400">{model.provider}</div>
+                                            </div>
+                                            <div className="text-[10px] px-1 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
+                                                ACTIVE
+                                            </div>
+                                        </div>
+                                    ))
+                            )}
+                            {!useOpenRouter && selectedModels.filter(m => m.isActive).length === 0 && (
+                                <div className="p-2 text-center text-xs text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded">
+                                    No active model selected.
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div>
