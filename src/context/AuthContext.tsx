@@ -64,8 +64,22 @@ class TokenManager {
     if (!token) return true;
     try {
       const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-      return !payload?.exp || Date.now() >= payload.exp * 1000;
-    } catch {
+      const currentTime = Math.floor(Date.now() / 1000); // Convert to seconds
+      const expTime = payload?.exp;
+      
+      console.log('Token expiration check:', {
+        current_time: currentTime,
+        exp_time: expTime,
+        time_diff: expTime ? (expTime - currentTime) : 'no exp',
+        is_expired: !expTime || currentTime >= expTime,
+        token_preview: token.substring(0, 20) + '...'
+      });
+      
+      // Add a small buffer (5 seconds) to account for clock skew
+      const bufferTime = 5;
+      return !expTime || (currentTime + bufferTime) >= expTime;
+    } catch (error) {
+      console.error('Error parsing token:', error);
       return true;
     }
   }
@@ -150,13 +164,36 @@ class AuthService {
   }
 
   async login(credentials: LoginCredentials): Promise<any> {
+    console.log('Attempting login with:', { email: credentials.email });
+
     const response = await this.makeRequest('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials)
     });
 
+    console.log('Login response received');
+
     if (response.access_token && response.refresh_token && response.user_id) {
+      console.log('Validating tokens before saving...');
+      
+      const accessTokenExpired = this.tokenManager.isTokenExpired(response.access_token);
+      const refreshTokenExpired = this.tokenManager.isTokenExpired(response.refresh_token);
+      
+      // If refresh token is immediately expired, this is a backend issue
+      if (refreshTokenExpired) {
+        console.error('BACKEND ISSUE: Refresh token is immediately expired. Check backend JWT generation.');
+        // For now, we'll still save the tokens but log the issue
+      }
+      
       this.tokenManager.saveTokens(response);
+      console.log('Tokens saved to storage');
+      
+    } else {
+      console.error('Invalid login response - missing required fields:', {
+        has_access_token: !!response.access_token,
+        has_refresh_token: !!response.refresh_token,
+        has_user_id: !!response.user_id
+      });
     }
 
     return response;
@@ -202,7 +239,7 @@ class AuthService {
     this.tokenManager.clearAll();
   }
 
-  async refreshAccessToken(): Promise<void> {
+  private async refreshAccessToken(): Promise<void> {
     const refreshToken = this.tokenManager.refreshToken;
 
     if (!refreshToken || this.tokenManager.isTokenExpired(refreshToken)) {
@@ -229,7 +266,6 @@ class AuthService {
         throw new AuthError('Invalid refresh response');
       }
 
-      // Save new tokens - backend should return both new access and refresh tokens
       this.tokenManager.saveTokens({
         access_token: data.access_token,
         refresh_token: data.refresh_token || refreshToken,
@@ -238,6 +274,86 @@ class AuthService {
     } catch (error) {
       this.tokenManager.clearAll();
       throw error;
+    }
+  }
+
+  // Enhanced API client that automatically handles token refresh
+  async apiCall(endpoint: string, options: RequestInit = {}): Promise<any> {
+    return this.fetchWithAuth(endpoint, options);
+  }
+
+  // Initialize auth state on app start
+  async initializeAuth(): Promise<boolean> {
+    try {
+      const accessToken = this.tokenManager.accessToken;
+      const refreshToken = this.tokenManager.refreshToken;
+
+      console.log('Auth initialization - tokens check:', {
+        has_access_token: !!accessToken,
+        access_token_expired: this.tokenManager.isTokenExpired(accessToken),
+        has_refresh_token: !!refreshToken,
+        refresh_token_expired: this.tokenManager.isTokenExpired(refreshToken)
+      });
+
+      // If no tokens at all, user is not authenticated
+      if (!accessToken && !refreshToken) {
+        console.log('No tokens found, user not authenticated');
+        return false;
+      }
+
+      // If refresh token is expired or missing, clear everything
+      if (!refreshToken || this.tokenManager.isTokenExpired(refreshToken)) {
+        console.log('Refresh token expired or missing, clearing all tokens');
+        this.tokenManager.clearAll();
+        return false;
+      }
+
+      // If access token is expired or missing, try to refresh it
+      if (!accessToken || this.tokenManager.isTokenExpired(accessToken)) {
+        console.log('Access token expired/missing, attempting refresh...');
+        try {
+          await this.refreshAccessToken();
+          console.log('Token refreshed successfully');
+          // After refresh, verify the new token works
+          await this.getCurrentUser();
+          console.log('User verification successful after refresh');
+          return true;
+        } catch (error) {
+          console.error('Token refresh failed during initialization:', error);
+          this.tokenManager.clearAll();
+          return false;
+        }
+      }
+
+      // If access token exists and is not expired, verify it with the server
+      console.log('Access token valid, verifying with server...');
+      try {
+        await this.getCurrentUser();
+        console.log('Server verification successful');
+        return true;
+      } catch (error) {
+        // If verification fails with 401, try to refresh
+        if (error instanceof AuthError && error.status === 401) {
+          console.log('Server verification failed with 401, attempting refresh...');
+          try {
+            await this.refreshAccessToken();
+            await this.getCurrentUser();
+            console.log('Token refresh and verification successful');
+            return true;
+          } catch (refreshError) {
+            console.error('Token verification and refresh failed:', refreshError);
+            this.tokenManager.clearAll();
+            return false;
+          }
+        }
+        // For other errors, still consider user authenticated if token is valid
+        console.log('Server verification failed with non-401 error, but token is valid');
+        return !this.tokenManager.isTokenExpired(accessToken);
+      }
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+      this.tokenManager.clearAll();
+      return false;
     }
   }
 
@@ -254,15 +370,55 @@ class AuthService {
     const accessToken = this.tokenManager.accessToken;
     const refreshToken = this.tokenManager.refreshToken;
 
-    // User is authenticated if:
-    // 1. Access token exists and is not expired, OR
-    // 2. Access token is expired but refresh token exists and is not expired
-    return !this.tokenManager.isTokenExpired(accessToken) ||
-      (!this.tokenManager.isTokenExpired(refreshToken) && !!refreshToken);
+    console.log('Authentication check:');
+    
+    if (!refreshToken) {
+      console.log('No refresh token found');
+      return false;
+    }
+
+    const isRefreshExpired = this.tokenManager.isTokenExpired(refreshToken);
+    
+    // TEMPORARY FIX: If both tokens exist but refresh is expired immediately,
+    // check if access token is still valid (backend issue workaround)
+    if (isRefreshExpired && accessToken) {
+      const isAccessExpired = this.tokenManager.isTokenExpired(accessToken);
+      if (!isAccessExpired) {
+        console.warn('WORKAROUND: Using valid access token despite expired refresh token (backend issue)');
+        return true;
+      }
+    }
+
+    const isAuth = !!refreshToken && !isRefreshExpired;
+    
+    console.log('Authentication result:', {
+      has_refresh_token: !!refreshToken,
+      refresh_token_expired: isRefreshExpired,
+      result: isAuth
+    });
+
+    return isAuth;
   }
 
   hasValidAccessToken(): boolean {
-    return !this.tokenManager.isTokenExpired(this.tokenManager.accessToken);
+    const accessToken = this.tokenManager.accessToken;
+    console.log('Checking access token validity:');
+
+    if (accessToken) {
+      const isExpired = this.tokenManager.isTokenExpired(accessToken);
+      const isValid = !isExpired;
+
+      console.log('hasValidAccessToken result:', {
+        has_access_token: !!accessToken,
+        is_expired: isExpired,
+        is_valid: isValid
+      });
+
+      return isValid;
+    }
+
+    console.log('No access token found');
+    return false;
   }
 }
 
@@ -271,36 +427,93 @@ export const authService = new AuthService();
 interface AuthContextType {
   isAuthenticated: boolean;
   hasValidAccessToken: boolean;
+  isLoading: boolean;
   setAuthenticated: (auth: boolean) => void;
   refreshAuthState: () => void;
+  apiCall: (endpoint: string, options?: RequestInit) => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
-  const [hasValidAccessToken, setHasValidAccessToken] = useState(authService.hasValidAccessToken());
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [hasValidAccessToken, setHasValidAccessToken] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const refreshAuthState = () => {
-    setIsAuthenticated(authService.isAuthenticated());
-    setHasValidAccessToken(authService.hasValidAccessToken());
+    const authStatus = authService.isAuthenticated();
+    const tokenStatus = authService.hasValidAccessToken();
+
+    console.log('Refreshing auth state:', {
+      previous_auth: isAuthenticated,
+      new_auth: authStatus,
+      previous_token: hasValidAccessToken,
+      new_token: tokenStatus
+    });
+
+    setIsAuthenticated(authStatus);
+    setHasValidAccessToken(tokenStatus);
   };
 
   useEffect(() => {
-    refreshAuthState();
+    const initializeAuth = async () => {
+      setIsLoading(true);
+      try {
+        console.log('Initializing auth...');
+        const isValid = await authService.initializeAuth();
+        console.log('Auth initialization result:', isValid);
 
-    const handleStorageChange = () => refreshAuthState();
+        if (isValid) {
+          refreshAuthState();
+        } else {
+          setIsAuthenticated(false);
+          setHasValidAccessToken(false);
+        }
+      } catch (error) {
+        console.error('Auth initialization failed:', error);
+        setIsAuthenticated(false);
+        setHasValidAccessToken(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
+
+    const handleStorageChange = () => {
+      console.log('Storage changed, refreshing auth state...');
+      refreshAuthState();
+    };
+
     window.addEventListener("storage", handleStorageChange);
 
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
+  // Wrapper for API calls that automatically handles auth
+  const apiCall = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
+    try {
+      const result = await authService.apiCall(endpoint, options);
+      // Refresh auth state after successful API call
+      refreshAuthState();
+      return result;
+    } catch (error) {
+      // If auth error, refresh auth state
+      if (error instanceof AuthError) {
+        refreshAuthState();
+      }
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       isAuthenticated,
       hasValidAccessToken,
+      isLoading,
       setAuthenticated: setIsAuthenticated,
-      refreshAuthState
+      refreshAuthState,
+      apiCall
     }}>
       {children}
     </AuthContext.Provider>
@@ -313,9 +526,20 @@ export const useAuth = () => {
   return context;
 };
 
-// Route Protection Component
+// Enhanced Route Protection Component with loading state
 export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
-  const { hasValidAccessToken } = useAuth();
+  const { hasValidAccessToken, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!hasValidAccessToken) {
     return (
