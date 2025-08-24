@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 interface Token {
     id: string;
@@ -30,6 +31,7 @@ interface JWTPayload {
 }
 
 export default function CreditsPage() {
+    const { apiCall, isAuthenticated, isLoading: authLoading } = useAuth();
     const [tokens, setTokens] = useState<Token[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
@@ -43,34 +45,17 @@ export default function CreditsPage() {
         expiry: 30,
         enabled: true
     });
+    const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
     // Update API base URL to match your backend
     const API_BASE = 'http://localhost:8080';
-
-    // Get auth token from localStorage
-    const getAuthToken = () => localStorage.getItem('auth_token');
 
     // Fetch tokens list
     const fetchTokens = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/listTokens`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setTokens(data || []);
-            } else if (response.status === 401) {
-                // Redirect to login if unauthorized
-                window.location.href = '/login';
-            } else {
-                console.error('Failed to fetch tokens');
-            }
+            const data = await apiCall('/listTokens');
+            setTokens(data || []);
         } catch (error) {
             console.error('Error fetching tokens:', error);
         } finally {
@@ -116,32 +101,20 @@ export default function CreditsPage() {
     const generateToken = async () => {
         try {
             setIsCreating(true);
-            const response = await fetch(`${API_BASE}/generateToken`, {
+            const data = await apiCall('/generateToken', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify(newToken)
             });
-
-            if (response.ok) {
-                const data = await response.json();
-                console.log('Token generated:', data);
-                // Reset form
-                setNewToken({
-                    token_name: "",
-                    credit_limit: 5.00,
-                    expiry: 30,
-                    enabled: true
-                });
-                // Refresh tokens list
-                await fetchTokens();
-            } else if (response.status === 401) {
-                window.location.href = '/login';
-            } else {
-                console.error('Failed to generate token');
-            }
+            console.log('Token generated:', data);
+            // Reset form
+            setNewToken({
+                token_name: "",
+                credit_limit: 5.00,
+                expiry: 30,
+                enabled: true
+            });
+            // Refresh tokens list
+            await fetchTokens();
         } catch (error) {
             console.error('Error generating token:', error);
         } finally {
@@ -149,30 +122,27 @@ export default function CreditsPage() {
         }
     };
 
-    // Delete token
+    // Delete token without confirmation
     const deleteToken = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this token?')) return;
-
         try {
-            const response = await fetch(`${API_BASE}/deleteToken`, {
+            await apiCall('/deleteToken', {
                 method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({ id })
             });
-
-            if (response.ok) {
-                // Refresh tokens list
-                await fetchTokens();
-            } else if (response.status === 401) {
-                window.location.href = '/login';
-            } else {
-                console.error('Failed to delete token');
-            }
+            await fetchTokens();
         } catch (error) {
             console.error('Error deleting token:', error);
+        }
+    };
+
+    // Copy token with feedback
+    const copyToken = async (token: string, tokenId: string) => {
+        try {
+            await navigator.clipboard.writeText(token);
+            setCopiedToken(tokenId);
+            setTimeout(() => setCopiedToken(null), 2000);
+        } catch (error) {
+            console.error('Failed to copy token:', error);
         }
     };
 
@@ -234,18 +204,37 @@ export default function CreditsPage() {
     };
 
     useEffect(() => {
-        // Check if user is authenticated
-        const token = getAuthToken();
-        if (!token) {
-            window.location.href = '/login';
-            return;
+        // Remove manual auth check, just fetch data when authenticated
+        if (isAuthenticated) {
+            fetchTokens();
+            fetchTransactions();
+            fetchCredits();
         }
+    }, [isAuthenticated]);
 
-        // Only fetch tokens for now, until other endpoints are implemented
-        fetchTokens();
-        fetchTransactions();
-        fetchCredits();
-    }, []);
+    // Show loading while auth is initializing
+    if (authLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+            </div>
+        );
+    }
+
+    // Show login message if not authenticated
+    if (!isAuthenticated) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Authentication Required</h2>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">Please log in to access the credits page.</p>
+                    <a href="/login" className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md">
+                        Go to Login
+                    </a>
+                </div>
+            </div>
+        );
+    }
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-US', {
@@ -311,7 +300,7 @@ export default function CreditsPage() {
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-green-500">
                         <div className="flex items-center">
                             <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Credits</p>
+                                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Allocated Credits</p>
                                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                                     ${tokens.reduce((sum, t) => sum + t.credit_limit, 0).toFixed(2)}
                                 </p>
@@ -633,34 +622,38 @@ export default function CreditsPage() {
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         {token.token ? (
                                                             <div className="flex items-center space-x-2">
-                                                                <code className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded font-mono text-gray-600 dark:text-gray-300">
-                                                                    {token.token.substring(0, 20)}...
-                                                                </code>
-                                                                <button
-                                                                    onClick={() => navigator.clipboard.writeText(token.token || '')}
-                                                                    className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
-                                                                    title="Copy token"
+                                                                <div
+                                                                    className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                                                    onClick={() => copyToken(token.token!, token.id)}
                                                                 >
-                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                                    </svg>
-                                                                </button>
+                                                                    <code className="text-xs font-mono text-gray-600 dark:text-gray-300 select-none">
+                                                                        {token.token.substring(0, 24)}...
+                                                                    </code>
+                                                                    {copiedToken === token.id ? (
+                                                                        <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                        </svg>
+                                                                    ) : (
+                                                                        <svg className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                        </svg>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         ) : (
                                                             <span className="text-xs text-gray-400 dark:text-gray-500">Not available</span>
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                        <div className="flex items-center space-x-2">
-                                                            <button
-                                                                onClick={() => deleteToken(token.id)}
-                                                                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 px-2 py-1 rounded transition-colors"
-                                                            >
-                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                </svg>
-                                                            </button>
-                                                        </div>
+                                                        <button
+                                                            onClick={() => deleteToken(token.id)}
+                                                            className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-600 hover:text-white hover:bg-red-600 dark:text-red-400 dark:hover:text-white dark:hover:bg-red-500 border border-red-300 hover:border-red-600 dark:border-red-600 dark:hover:border-red-500 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                                        >
+                                                            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                            Delete
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             );

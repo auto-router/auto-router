@@ -23,7 +23,7 @@ interface LoginCredentials {
 
 class TokenManager {
   private static readonly STORAGE_KEYS = {
-    ACCESS_TOKEN: 'auth_token',
+    ACCESS_TOKEN: 'access_token',
     REFRESH_TOKEN: 'refresh_token',
     USER_ID: 'user_id',
     USER_DATA: 'user_data',
@@ -388,13 +388,4 @@ export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
-};
-
-export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
-  const { hasValidAccessToken, isLoading } = useAuth();
-
-  if (isLoading) return <div>Loading...</div>;
-  if (!hasValidAccessToken) return <div>Please login to continue</div>;
-
-  return <>{children}</>;
 };
