@@ -18,24 +18,16 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    console.log('Login form submitted with:', { email });
-
     try {
       await authService.login({ email, password });
       setAuthenticated(true);
-      refreshAuthState(); // Ensure persisted state is updated
+      refreshAuthState();
       router.push("/");
     } catch (err) {
-      console.error('Login error details:', {
-        error: err,
-        message: err instanceof Error ? err.message : 'Unknown error',
-        stack: err instanceof Error ? err.stack : undefined
-      });
-
       if (err instanceof AuthError) {
         setError(err.message);
       } else {
-        setError("An unexpected error occurred. Please try again.");
+        setError("Login failed. Please check your credentials and try again.");
       }
     } finally {
       setLoading(false);
@@ -44,15 +36,12 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
+    setError("");
+
     try {
       await authService.googleAuth();
     } catch (err) {
-      if (err instanceof AuthError) {
-        setError(err.message);
-      } else {
-        setError("Failed to sign in with Google");
-      }
-      console.error('Google sign-in error:', err);
+      setError("Failed to sign in with Google");
       setLoading(false);
     }
   };

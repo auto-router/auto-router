@@ -41,3 +41,9 @@ export default function GoogleCallbackPage() {
     return <div>Signing you in...</div>;
 }
 
+// Update any Google OAuth login links from /auth/google to /oauth/google
+
+// Look for patterns like:
+// window.location.href = `${BACKEND_BASE_URL}/auth/google`
+// Should be changed to:
+// window.location.href = `${BACKEND_BASE_URL}/oauth/google`
